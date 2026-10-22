@@ -88,6 +88,10 @@ scripts/loot-check.mjs  make loot-check: loot never covers the play area,
                           portrait and a short landscape
 scripts/floor-shots.mjs make floor-shots: whole floors as images, three
                           seeds, floors 1, 3 and 5
+scripts/screen-check.mjs make screen-check: the play screen on an iPhone
+                          from the home screen (safe area stood in) and in
+                          Safari; the install hint
+scripts/icons.mjs       make icons: the home-screen PNGs from public/icon.svg
 public/mockups/         the design mockups and their shooter
 ```
 
@@ -112,35 +116,43 @@ public/mockups/         the design mockups and their shooter
    multiply it (`speedMul`), so 170, the first build's pace, is a late
    ranger's. Enemies, arrows, knockback and the lunge are set to the base
    pace; scale them with it.
-7. **Every enemy attack is slow enough to see.** A windup shows before a
+7. **The hands have a rhythm.** A tap on the bow queues one shot that
+   leaves at half draw (`QUICK`), a hold draws to the full shot, and the
+   next draw waits `NOCK` of a draw time: a basic bow fires at most one
+   tapped shot a second, a maxed ranger with a taut bow about three. The
+   sword swings `SWING_TIME` and locks `SWING_LOCK`, shortened by the
+   skill. `sim-check` taps every frame and holds for ten seconds and fails
+   if the basic bow or sword beats the rate.
+8. **Every enemy attack is slow enough to see.** A windup shows before a
    strike, the bear's charge draws its lane, enemy arrows fly slowly. The
    proof is `npm run gauntlet`: the human-limited bot must reach floor 3
    with either hand in most runs.
-8. **Skills rise only from hits on enemies that still give experience, and
+9. **Skills rise only from hits on enemies that still give experience, and
    never past the floor's cap** (`skillCap`). That is the rule that makes
    grinding impossible; do not add a way round it.
-9. **The save is the top of a floor.** `nextFloor` snapshots before the
+10. **The save is the top of a floor.** `nextFloor` snapshots before the
    floor spawns (`save.ts`); death clears it. Nothing mid-floor is saved.
-10. **Two languages, English in the code.** Every player-facing string is
+11. **Two languages, English in the code.** Every player-facing string is
    `L(fi, en)` or `tr(fi, en)`.
-11. **A body never catches on a corner.** `moveCircle` slides along walls
+12. **A body never catches on a corner.** `moveCircle` slides along walls
     and nudges round door frames and wall ends; `sim-check` pushes a body
     diagonally into corners and doorways and fails if it stops. Corridors
     are one to three tiles wide; areas are open enough to kite in.
-12. **Nothing in the HUD covers the hero's part of the screen.** Every
+13. **Nothing in the HUD covers the hero's part of the screen.** Every
     element lives in a column at an edge (`docs/loot-ui.md`); `loot-check`
     asserts it in portrait and in a short landscape viewport.
-13. **Prose style:** no em dashes, no "this, not that", no metaphors.
+14. **Prose style:** no em dashes, no "this, not that", no metaphors.
     Commit messages in English.
 
 ## Workflow
 
 - `make dev` (http://localhost:5173, also on the LAN for a phone).
 - **Before committing:** `make check` (typecheck, build, `sim-check`,
-  `gauntlet`, `loot-check`, `phone-run`) must pass. `phone-run` drives an emulated iPhone,
+  `gauntlet`, `loot-check`, `screen-check`, `phone-run`) must pass. `phone-run` drives an emulated iPhone,
   so it needs `make shots-setup` once.
 - **Balance with `make balance [RUNS=6] [STYLE=best|sword|bow] [WHO=bot|human]`.**
-- **URL knobs:** `?seed=N` fixes the run, `?bot=1` plays the bot, `?bot=human`
+- **URL knobs:** `?seed=N` fixes the run, `?safe=l,r,t,b` stands in the
+  iPhone's safe area, `?standalone=0|1` forces the install hint on or off, `?bot=1` plays the bot, `?bot=human`
   the bot with a person's limits, `?speed=3` runs the sim at three times
   real time, `?lang=en`.
 - `make shots` / `make shots-en` for phone screenshots.

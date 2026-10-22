@@ -23,8 +23,12 @@ a { color: var(--gold); }
 /* screens */
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding: calc(var(--sat) + 16px) calc(var(--sar) + 16px) calc(var(--sab) + 16px) calc(var(--sal) + 16px); text-align: center; background: radial-gradient(ellipse at 50% 25%, #1c261c 0%, #0b0d0a 70%); overflow-y: auto; }
 .logo { font-size: clamp(64px, 19vw, 120px); font-weight: 900; letter-spacing: 0.08em; line-height: 1; margin: 0; color: var(--gold); background: linear-gradient(#ffe7a0, #e0b048 45%, #9a6a18 55%, #e8c060); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 0 #1a2a10) drop-shadow(0 10px 24px rgba(0,0,0,0.7)); }
-.tagline { color: var(--muted); margin: 10px 0 28px; font-size: 16px; max-width: 340px; }
+.tagline { color: var(--muted); margin: 10px 0 16px; font-size: 16px; max-width: 340px; }
+@media (orientation: landscape) and (max-height: 500px) { .logo { font-size: 56px; } .tagline { margin: 4px 0 8px; font-size: 14px; } .screen { padding-bottom: calc(var(--sab) + 30px); } }
 .credits { margin-top: 24px; font-style: italic; }
+.install { max-width: 420px; font-size: 12px; background: rgba(224,176,72,0.1); border: 1px solid rgba(224,176,72,0.4); border-radius: 10px; padding: 8px 12px; margin: 6px 0; line-height: 1.35; }
+.install b { color: var(--gold); }
+.install .share { display: inline-block; border: 1px solid rgba(236,230,210,0.5); border-radius: 4px; padding: 0 4px; font-style: normal; }
 .btn { display: inline-block; min-width: 200px; padding: 15px 24px; margin: 6px; border-radius: 12px; border: 2px solid #1a2a1a; background: linear-gradient(#4a6a3a, #2a4a24); color: var(--ink); font-size: 19px; font-weight: 800; cursor: pointer; box-shadow: 0 5px 0 #0a1a0a, 0 8px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,160,0.2); transition: transform 0.05s; }
 .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #0a1a0a; }
 .btn.primary { background: linear-gradient(#ffd870, #d89a20); color: #2a1800; border-color: #6a4408; box-shadow: 0 5px 0 #6a4408, 0 8px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }

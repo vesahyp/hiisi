@@ -12,9 +12,14 @@
     <meta name="theme-color" content="#0b0d0a" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <!-- Added to the home screen, the game runs without Safari's bars: these
+         tags, the manifest's display, and an opaque 180 px icon (iOS fills a
+         transparent corner with white). From Linko. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hiisi" />
     <title>Hiisi</title>
     <meta name="description" content="Toimintaroolipeli puhelimelle: laskeudu Hiiden mäkeen kerros kerrallaan, miekalla tai jousella, ja anna taitojen kasvaa siitä mitä teet." />
   </head>

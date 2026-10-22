@@ -19,6 +19,14 @@ function ConfirmButton({ className, label, sure, onConfirm }: { className: strin
   );
 }
 
+/** True in Safari on an iPhone or iPad, where the game can be added to the home screen; false once it has been (then navigator.standalone is true). */
+function canInstall(): boolean {
+  const asked = new URLSearchParams(location.search).get('standalone');
+  if (asked !== null) return asked === '0';
+  const nav = navigator as Navigator & { standalone?: boolean };
+  return typeof nav.standalone === 'boolean' && !nav.standalone;
+}
+
 export function Title({ records, hasSave, saveFloor, onContinue, onNew, onRecords, onGuide, onLang }: { records: Records; hasSave: boolean; saveFloor: number; onContinue: () => void; onNew: () => void; onRecords: () => void; onGuide: () => void; onLang: (l: Lang) => void }) {
   const go = (f: () => void) => {
     audio.unlock();
@@ -29,6 +37,11 @@ export function Title({ records, hasSave, saveFloor, onContinue, onNew, onRecord
     <div className="screen title">
       <h1 className="logo">HIISI</h1>
       <p className="tagline">{tr('Laskeudu Hiiden mäkeen. Miekka, jousi, ja taidot jotka kasvavat siitä mitä teet.', "Go down into Hiisi's hill. A sword, a bow, and skills that grow from what you do.")}</p>
+      {canInstall() && (
+        <p className="small install">
+          <b>{tr('Koko ruudulle:', 'Full screen:')}</b> {tr('Jaa', 'Share')} <span className="share">⎙</span> → {tr('Lisää Koti-valikkoon', 'Add to Home Screen')}. {tr('Kuvakkeesta peli aukeaa ilman Safarin palkkeja, myös vaakatasossa. Tallennus ei siirry Safarista kuvakkeeseen: aloita uusi kierros siellä.', 'From the icon the game opens without Safari\'s bars, in landscape too. The save does not move from Safari to the icon: start a new run there.')}
+        </p>
+      )}
       {hasSave ? (
         <>
           <button className="btn primary big" onClick={() => go(onContinue)}>
