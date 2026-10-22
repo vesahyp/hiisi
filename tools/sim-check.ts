@@ -164,7 +164,7 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   };
   const drawn = () => {
     const before = e2.hp;
-    for (let i = 0; i < 70; i++) step(s, inp({ hold: true }), DT);
+    for (let i = 0; i < 80; i++) step(s, inp({ hold: true }), DT);
     for (let i = 0; i < 60; i++) step(s, inp({ holdRelease: i === 0 }), DT);
     return before - e2.hp;
   };
@@ -191,36 +191,95 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
     return n;
   };
   const spam = shots(10, () => inp({ attack: true }));
-  check('a basic bow tapped every frame fires at most one shot a second', spam <= 11 && spam >= 8, `${spam} shots in 10 s`);
+  check('a basic bow tapped every frame fires at most two weak shots a second', spam <= 18 && spam >= 12, `${spam} shots in 10 s`);
   h.draw = 0;
-  h.wantShot = false;
   h.lock = 0;
   // the hold: draw to full, release, again
   const held = shots(10, () => inp(h.draw >= 1 ? { holdRelease: true } : { hold: true }));
   check('a full draw and release cycles about every one and a half seconds', held <= 8 && held >= 5, `${held} full shots in 10 s`);
+  // a draw held with nobody in sight stays drawn, and leaves on the release
   h.draw = 0;
-  h.wantShot = false;
   h.lock = 0;
-  // a maxed ranger with a taut bow: fast
+  for (let i = 0; i < 300; i++) step(s, inp({ hold: true }), DT);
+  check('a draw can be held as long as you like, at full', h.drawing && h.draw >= 1, `draw ${h.draw.toFixed(2)} after 5 s`);
+  s.sounds.length = 0;
+  step(s, inp({ holdRelease: true }), DT);
+  check('the shot leaves only on the release', s.sounds.includes('bowfull') && !h.drawing);
+  // damage grows with the draw: a tap, a half draw, a full draw
+  // the dummy sits at this offset from the hero every try: a swing lunges him forward, so he is put back too
+  let at = { dx: 4 * T, dy: 0 };
+  const home0 = { x: h.x, y: h.y };
+  const dmgOf = (draw: number) => {
+    let total = 0;
+    for (let k = 0; k < 20; k++) {
+      if (h.active === 0) {
+        h.x = home0.x;
+        h.y = home0.y;
+      }
+      h.lock = 0;
+      h.draw = 0;
+      h.drawing = false;
+      h.swing = null;
+      e.x = h.x + at.dx;
+      e.y = h.y + at.dy;
+      e.knock = { vx: 0, vy: 0 };
+      e.mode = 'idle';
+      const hp0 = e.hp;
+      if (draw === 0) step(s, inp({ attack: true }), DT);
+      else {
+        while (h.draw < draw) step(s, inp({ hold: true }), DT);
+        step(s, inp({ holdRelease: true }), DT);
+      }
+      for (let i = 0; i < 90; i++) step(s, inp({}), DT);
+      total += hp0 - e.hp;
+    }
+    return total / 20;
+  };
+  const tap = dmgOf(0);
+  const half = dmgOf(0.5);
+  const fullD = dmgOf(1);
+  check('an arrow does more the longer the draw, smoothly: tap, half, full', tap < half && half < fullD && fullD > tap * 2.5, `${tap.toFixed(1)} / ${half.toFixed(1)} / ${fullD.toFixed(1)}`);
+  // a maxed ranger with a taut bow: the time to full shrinks, the cap does not
   h.skills.jousi.lvl = 20;
   h.nodes.nopeaveto = true;
   h.hands[1]!.speed = 0.65;
-  const ranger = shots(10, () => inp({ attack: true }));
-  check('a maxed ranger with a taut bow fires about three shots a second', ranger >= 25 && ranger <= 40, `${ranger} shots in 10 s`);
-  // the sword: a swing time too
+  h.draw = 0;
+  h.lock = 0;
+  const ranger = shots(10, () => inp(h.draw >= 1 ? { holdRelease: true } : { hold: true }));
+  check('a maxed ranger with a taut bow fires two to four full shots a second', ranger >= 20 && ranger <= 40, `${ranger} full shots in 10 s`);
+  const rangerTap = dmgOf(0);
+  const rangerFull = dmgOf(1);
+  check('skill and gear shorten the draw, never raise the cap: the full-to-tap ratio stays', Math.abs(rangerFull / rangerTap - fullD / tap) < 0.8, `ranger ${(rangerFull / rangerTap).toFixed(2)}x vs start ${(fullD / tap).toFixed(2)}x`);
+  // the sword: a tap is the quick weak slash, a hold the heavy one, spam capped
+  // (every swing lunges the hero forward: put him back at the arena's start first)
+  const home = { x: h.x, y: h.y };
   h.active = 0;
   h.skills.jousi.lvl = 0;
-  const swings = (secs: number) => {
+  h.draw = 0;
+  h.lock = 0;
+  h.drawing = false;
+  const swings = (secs: number, input: () => HeroInput) => {
     let n = 0;
     for (let i = 0; i < secs * 60; i++) {
       s.sounds.length = 0;
-      step(s, inp({ attack: true }), DT);
+      step(s, input(), DT);
       n += s.sounds.filter((x) => x === 'swing').length;
     }
     return n;
   };
-  const sw = swings(10);
+  const sw = swings(10, () => inp({ attack: true }));
   check('a basic sword tapped every frame swings at most twice a second', sw <= 18 && sw >= 12, `${sw} swings in 10 s`);
+  h.x = home.x;
+  h.y = home.y;
+  at = { dx: 30, dy: 0 };
+  const slash = dmgOf(0);
+  const heavy = dmgOf(1);
+  check('a wound-up swing does about three times a quick slash', heavy > slash * 2.5 && heavy < slash * 4, `${slash.toFixed(1)} / ${heavy.toFixed(1)}`);
+  h.draw = 0;
+  h.lock = 0;
+  h.drawing = false;
+  const wound = swings(10, () => inp(h.draw >= 1 ? { holdRelease: true } : { hold: true }));
+  check('a full wind-up and release cycles about every one and a half seconds', wound >= 5 && wound <= 9, `${wound} heavy swings in 10 s`);
 }
 
 // ————— experience and skills —————

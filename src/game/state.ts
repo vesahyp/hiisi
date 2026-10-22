@@ -67,11 +67,9 @@ export interface Hero {
   /** potion kinds whose colour the run has shown */
   known: Record<PotionKind, boolean>;
   swing: Swing | null;
-  /** the bow's draw, 0..1, while the hold lasts */
+  /** the bow's draw or the sword's wind-up, 0..1, while the hold lasts; the shot or the swing leaves on the release */
   draw: number;
   drawing: boolean;
-  /** a tap queued a shot: it leaves when the draw reaches the quick mark */
-  wantShot: boolean;
   /** the sword held up: seconds held, -1 when down */
   parry: number;
   /** seconds a parry just landed, for the stagger window and the flash */
@@ -284,7 +282,6 @@ export function createHero(): Hero {
     swing: null,
     draw: 0,
     drawing: false,
-    wantShot: false,
     parry: -1,
     parried: 0,
     lock: 0,

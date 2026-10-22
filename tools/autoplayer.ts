@@ -163,15 +163,17 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
         mx = f.dx;
         my = f.dy;
       }
-      if (sees && td < reach + tgt.r + 6) {
-        // a windup coming: parry if it can, else step aside
-        if (tgt.mode === 'windup' && noticed(mem, s, who, -tgt.id)) {
-          if (has(h, 'torjunta')) inp.hold = true;
-          else {
-            mx += -dy * 2;
-            my += dx * 2;
-          }
-        } else inp.attack = true;
+      // close: wind the swing up, and release it in reach; a windup coming
+      // is met with the same hold (the guard) or a sidestep
+      if (sees && td < reach * 2.2) {
+        const threat = tgt.mode === 'windup' && noticed(mem, s, who, -tgt.id);
+        if (threat && !has(h, 'torjunta')) {
+          mx += -dy * 2;
+          my += dx * 2;
+        }
+        const inReach = td < reach + tgt.r + 6;
+        if (h.drawing && inReach && (h.draw >= 1 || !threat)) inp.holdRelease = true;
+        else if (h.lock <= 0 && !h.swing) inp.hold = true;
       }
     }
     if (tgt.mode !== 'windup') mem.seen.delete(-tgt.id);

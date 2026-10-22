@@ -18,8 +18,8 @@ kuvakkeesta uusi kierros.
 
 **Puhelimella:** vasen peukalo kävelee. Oikealla peukalolla napautus lyö tai
 ampuu lähintä vihollista jonka näet, veto näyttää tähtäyksen ja laukaisee
-kun nostat sormen, ja pito on aseen toinen verbi: jousi jännittyy, miekka
-torjuu edestä (kun Torjunta on opittu). Kaksi tekniikkanappia oikean
+kun nostat sormen, ja pito lataa: jousi jännittyy, miekka vetäytyy lyöntiin, ja nosto
+laukaisee. Ladattu miekka myös torjuu edestä, kun Torjunta on opittu. Kaksi tekniikkanappia oikean
 peukalon yllä tulevat taitopuusta. ⇄ vaihtaa kättä, 🧪 juo
 parannusjuoman. Pienoiskartta avaa koko kerroksen; ☰ avaa hahmon,
 taitopuun ja repun.
@@ -36,11 +36,13 @@ E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
   käynyt. Viholliset nukkuvat tai vaeltavat alueillaan, ja huomaavat sinut
   kun näkevät sinut. Hahmo liukuu seinää pitkin ja kulmien ympäri, joten
   oviaukkoon ei tarvitse osua tarkasti.
-- **Jousella on rytmi.** Napautus jännittää puoleen ja ampuu: aloitusjousi
-  ampuu noin kerran sekunnissa, napautti miten tiheään tahansa. Pito
-  jännittää täyteen, ja täysi jännitys on vahva laukaus. Jousen taito ja
-  jäntevä jousi nopeuttavat jännitystä, joten harjaantunut jousimies ampuu
-  kolmesti sekunnissa. Miekalla on lyöntiaika samaan tapaan.
+- **Pito lataa, nosto laukaisee.** Jousi jännittyy ja miekka vetäytyy
+  lyöntiin niin kauan kuin pidät, myös ilman vihollista näkyvissä. Rengas
+  hahmon ympärillä näyttää latauksen ja sen kertoimen: napautus on heikko
+  (×0.6), täysi lataus kaksinkertainen. Latauksen aikana kävelet hitaammin.
+  Laukausten ja lyöntien väliin jää aina lyhyt tauko, joten naputtelu ei
+  auta. Jousen ja miekan taito sekä jäntevä jousi tai nopea miekka
+  lyhentävät aikaa täyteen lataukseen; katto ei nouse.
 - **Jokainen vihollisen isku näkyy ennen kuin se osuu**: punainen kaari
   ennen lyöntiä, viiva ennen nuolta, kaista ennen karhun rynnäkköä.
 - **Vauhti kasvaa kierroksen mittaan.** Alussa kuljet rauhallisesti.

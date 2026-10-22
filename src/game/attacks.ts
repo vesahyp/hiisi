@@ -38,19 +38,30 @@ export function bowRange(it: Item): number {
   return 9 * T * it.reach;
 }
 
-/** The bow's rhythm: a full draw takes this long; a quick shot leaves at half; after a shot the next draw waits NOCK of it. */
+/**
+ * The hands' rhythm. A hold charges: the bow draws, the sword winds up, as
+ * long as the thumb stays down, to a cap at 1. The release fires with the
+ * charge; a tap fires at zero charge, the weak version. After a shot the
+ * next draw waits NOCK of a draw time; after a swing the next waits
+ * `swingLock`. Skills and gear shorten the time to full, never the cap.
+ */
 export const DRAW_TIME = 1.0;
-export const QUICK = 0.5;
-export const NOCK = 0.5;
+export const NOCK = 0.6;
 export function drawTime(h: Hero, it: Item): number {
   return DRAW_TIME * it.speed * heroStats(h).drawMul;
 }
-
-/** The sword's rhythm: a swing lasts this long, and the next can start after `swingLock`. */
+export const WIND_TIME = 0.8;
+export function windTime(h: Hero, it: Item): number {
+  return WIND_TIME * it.speed * heroStats(h).windMul;
+}
 export const SWING_TIME = 0.3;
 export const SWING_LOCK = 0.6;
 export function swingLock(h: Hero, it: Item): number {
   return Math.max(0.25, SWING_LOCK * it.speed * (1 - 0.02 * h.skills.miekka.lvl));
+}
+/** What a charge is worth: a tap does three fifths, a full hold twice. */
+export function chargeMul(charge: number): number {
+  return 0.6 + 1.4 * Math.min(1, Math.max(0, charge));
 }
 
 function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
@@ -66,6 +77,8 @@ export function startSwing(s: SimState, h: Hero, it: Item, angle: number, o: Par
   h.facing = angle;
   h.lock = swingLock(h, it);
   h.parry = -1;
+  h.draw = 0;
+  h.drawing = false;
   s.sounds.push('swing');
   noise(s, h.x, h.y, 4);
 }
@@ -110,10 +123,11 @@ export function updateSwing(s: SimState, h: Hero, dt: number): void {
 
 export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: number): void {
   const full = draw >= 0.99;
-  let mul = 1 + draw * (has(h, 'jannitys') ? 1 : 0.5);
+  // the draw's worth: damage, and a little range and speed; the node adds the pierce at full
+  let mul = chargeMul(draw);
   const pierce = (full && has(h, 'jannitys')) || it.affix === 'piercing' ? 4 : 0;
   const count = has(h, 'kaksoisnuoli') ? 2 : 1;
-  const sp = 330 + draw * 90;
+  const sp = 260 + draw * 160;
   for (let k = 0; k < count; k++) {
     const a = angle + (count > 1 ? (k === 0 ? -0.07 : 0.07) : 0);
     s.projectiles.push({
@@ -125,7 +139,7 @@ export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: numbe
       r: 5,
       team: 0,
       dmg: rollDamage(s, h, it, mul),
-      left: bowRange(it),
+      left: bowRange(it) * (0.7 + 0.3 * draw),
       pierce,
       hit: new Set(),
       kind: 'arrow',
@@ -139,7 +153,6 @@ export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: numbe
   h.lock = NOCK * drawTime(h, it);
   h.draw = 0;
   h.drawing = false;
-  h.wantShot = false;
   s.sounds.push(full ? 'bowfull' : 'bowshot');
   if (!has(h, 'hiljainen')) noise(s, h.x, h.y, 6);
 }
@@ -163,46 +176,43 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
   if (!it) return;
   const sword = it.kind === 'sword';
 
-  // the hold verb: the sword up, the bow drawn
-  if (sword) {
-    if (inp.hold && !h.swing && h.lock <= 0 && !h.dash && has(h, 'torjunta')) {
-      if (h.parry < 0) h.parry = 0;
-      else h.parry += dt;
-      if (Math.hypot(inp.aimX, inp.aimY) > 0.2) h.facing = Math.atan2(inp.aimY, inp.aimX);
-      else {
-        const e = nearestVisible(s, h, 4 * T);
-        if (e) h.facing = Math.atan2(e.y - h.y, e.x - h.x);
-      }
-    } else h.parry = -1;
-    h.drawing = false;
-    h.draw = 0;
-    h.wantShot = false;
-    if (inp.attack && h.lock <= 0 && !h.swing && !h.dash) {
-      const angle = aimAngle(s, h, inp, swordReach(h, it) * 1.6);
-      startSwing(s, h, it, angle);
-    }
-  } else {
-    h.parry = -1;
-    // the bow: a tap queues one shot, which leaves when the draw reaches the
-    // quick mark; a hold draws on toward the full shot and the release fires
-    // it; nothing fires while the last shot is still being nocked
-    if (inp.attack && h.lock <= 0 && !h.dash && !h.wantShot) h.wantShot = true;
-    if (inp.holdRelease && h.lock <= 0 && !h.dash) {
-      if (h.draw >= QUICK) {
-        shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), h.draw);
-      } else h.wantShot = true;
-    }
-    if ((inp.hold || h.wantShot) && h.lock <= 0 && !h.dash) {
-      const before = h.draw;
+  // the hold verb charges: the bow draws, the sword winds up (and, with
+  // Torjunta, guards from the front while it does); the release fires with
+  // the charge, a tap fires the weak version at once
+  const canStart = h.lock <= 0 && !h.swing && !h.dash;
+  if (inp.hold && (canStart || h.drawing)) {
+    if (!h.drawing) {
       h.drawing = true;
-      h.draw = Math.min(1, h.draw + dt / drawTime(h, it));
-      if (h.draw >= 1 && before < 1) s.sounds.push('drawfull');
-      if (h.wantShot && h.draw >= QUICK) shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), h.draw);
-    } else if (!inp.hold && !h.wantShot) {
-      h.drawing = false;
       h.draw = 0;
     }
+    const before = h.draw;
+    h.draw = Math.min(1, h.draw + dt / (sword ? windTime(h, it) : drawTime(h, it)));
+    if (h.draw >= 1 && before < 1) s.sounds.push('drawfull');
+    if (sword && has(h, 'torjunta')) {
+      if (h.parry < 0) h.parry = 0;
+      else h.parry += dt;
+    }
+    if (Math.hypot(inp.aimX, inp.aimY) > 0.2) h.facing = Math.atan2(inp.aimY, inp.aimX);
+    else if (sword) {
+      const e = nearestVisible(s, h, 4 * T);
+      if (e) h.facing = Math.atan2(e.y - h.y, e.x - h.x);
+    }
+  } else if (!inp.holdRelease) {
+    h.drawing = false;
+    h.draw = 0;
+    h.parry = -1;
   }
+  const fire = (charge: number) => {
+    if (sword) startSwing(s, h, it, aimAngle(s, h, inp, swordReach(h, it) * 1.6), { dmgMul: chargeMul(charge) });
+    else shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), charge);
+  };
+  if (inp.holdRelease && h.drawing) {
+    const charge = h.draw;
+    h.drawing = false;
+    h.draw = 0;
+    h.parry = -1;
+    if (h.lock <= 0 && !h.swing && !h.dash) fire(charge);
+  } else if (inp.attack && canStart) fire(0);
   h.aimShow = { on: inp.aiming, x: inp.aiming ? inp.aimX : h.aimShow.x, y: inp.aiming ? inp.aimY : h.aimShow.y };
 
   for (const i of [0, 1] as const) {

@@ -116,13 +116,13 @@ public/mockups/         the design mockups and their shooter
    multiply it (`speedMul`), so 170, the first build's pace, is a late
    ranger's. Enemies, arrows, knockback and the lunge are set to the base
    pace; scale them with it.
-7. **The hands have a rhythm.** A tap on the bow queues one shot that
-   leaves at half draw (`QUICK`), a hold draws to the full shot, and the
-   next draw waits `NOCK` of a draw time: a basic bow fires at most one
-   tapped shot a second, a maxed ranger with a taut bow about three. The
-   sword swings `SWING_TIME` and locks `SWING_LOCK`, shortened by the
-   skill. `sim-check` taps every frame and holds for ten seconds and fails
-   if the basic bow or sword beats the rate.
+7. **A hold charges, the release fires, a tap is weak.** Both hands: the
+   bow draws, the sword winds up (and guards with Torjunta), for as long as
+   the thumb stays down, to a cap at 1; the release fires with the charge
+   (`chargeMul`: ×0.6 at a tap, ×2 at full), and the next draw or swing
+   waits `NOCK` or `swingLock`. Skills and gear shorten the time to full
+   (`drawMul`, `windMul`), never the cap. `sim-check` asserts the spam
+   rate, the held draw, the damage curve and the cap.
 8. **Every enemy attack is slow enough to see.** A windup shows before a
    strike, the bear's charge draws its lane, enemy arrows fly slowly. The
    proof is `npm run gauntlet`: the human-limited bot must reach floor 3

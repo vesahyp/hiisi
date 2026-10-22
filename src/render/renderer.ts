@@ -469,16 +469,26 @@ export class Renderer {
       }
     }
     // the draw ring
+    // the charge ring: the draw or the wind-up, and what it is worth
     if (h.drawing) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 4;
+      const full = h.draw >= 1;
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.arc(h.x, h.y, 18, 0, Math.PI * 2);
+      ctx.arc(h.x, h.y, 20, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.strokeStyle = h.draw >= 1 ? '#fff' : '#ffd040';
+      ctx.strokeStyle = full ? '#ffffff' : it?.kind === 'sword' ? '#ffb060' : '#ffd040';
+      ctx.lineWidth = full ? 6 : 5;
       ctx.beginPath();
-      ctx.arc(h.x, h.y, 18, -Math.PI / 2, -Math.PI / 2 + h.draw * Math.PI * 2);
+      ctx.arc(h.x, h.y, 20, -Math.PI / 2, -Math.PI / 2 + h.draw * Math.PI * 2);
       ctx.stroke();
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = full ? '#fff' : '#ffd870';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(`×${(0.6 + 1.4 * h.draw).toFixed(1)}`, h.x, h.y - 30);
+      ctx.shadowBlur = 0;
     }
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
