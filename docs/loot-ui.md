@@ -61,15 +61,29 @@ without opening anything.
 
 ## The rest of the screen
 
-The same playtest showed two more things on the play area, fixed with the
-same principle (every HUD element lives in a column at the edge; the
-centre belongs to the game):
+Vesa's fifth playtest set the rule for the whole screen: **the top strip
+is the HUD, the bottom half is the controls, the play area round the hero
+stays clear**, in both orientations.
 
-- **The message log** sits in the left column under the hands, three
-  lines, left-aligned, never over the centre.
-- **The technique, potion and swap buttons** form a 2 by 2 block at the
-  bottom right in landscape, so a short viewport (Safari with its bars,
-  about 330 px) never pushes them up into the top-right buttons.
+- **The top strip.** One compact block at the left: floor, level and
+  experience on a row, the health bar, the two hands as pills (icon,
+  damage, the skill number; a tap on the other swaps). The last log line
+  runs between that block and the right-hand buttons. The minimap, the
+  sheet button and pause are small at the right. The loot chip hangs
+  under the block.
+- **The bottom half.** A faint dashed ring where the left thumb rests
+  (the move zone, "kävele") and one under the right thumb (the attack
+  zone, "lyö · pito lataa"), drawn always so a new player sees where to
+  touch; they brighten while touched. The technique buttons, the potion
+  and the swap sit in an arc round the attack ring, drawn as outlines
+  even when empty. The real stick still starts where the thumb lands.
+- **Portrait.** The camera keeps the hero in the upper part of the
+  screen (15 % of the view above centre), so the controls own the bottom
+  half and the hero's part of the screen stays clear.
+- **The proof.** `screen-check` asserts every element inside the safe
+  area, both rings and every button in the bottom half on their own
+  side, and the rings dashed before a touch; `loot-check` asserts that no
+  HUD element or control covers the box round where the hero is drawn.
 
 ## Porting to Höyry
 

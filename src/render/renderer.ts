@@ -89,8 +89,9 @@ export class Renderer {
     const sc = this.scale;
     const viewW = W / sc;
     const viewH = H / sc;
+    // in portrait the controls own the bottom half, so the hero is kept in the upper part of the screen
     const tx = s.cam.x;
-    const ty = s.cam.y;
+    const ty = s.cam.y + (this.cssH > this.cssW ? viewH * 0.15 : 0);
     if (!this.camInit || s.floorTime < 0.05) {
       this.camX = tx;
       this.camY = ty;

@@ -55,15 +55,23 @@ try {
         const q = el.getBoundingClientRect();
         return { l: q.left, r: q.right, t: q.top, b: q.bottom };
       };
-      return { vw: innerWidth, vh: innerHeight, cw: b.width, ch: b.height, hud: box('.hud'), hands: box('.hands'), corner: box('.corner'), techs: box('.techs'), log: box('.log') };
+      return { vw: innerWidth, vh: innerHeight, cw: b.width, ch: b.height, hud: box('.hud'), corner: box('.corner'), ctl: box('.ctl .tech.t1'), swap: box('.ctl .swapbtn'), potion: box('.ctl .potion'), move: box('.zone.move .ring'), attack: box('.zone.attack .ring'), log: box('.log') };
     });
     console.log(`${c.name}: screen ${r.vw}x${r.vh}, canvas ${r.cw}x${r.ch}`);
     check(Math.round(r.cw) === r.vw && Math.round(r.ch) === r.vh, `${c.name}: the canvas covers the whole screen`);
-    for (const [name, q] of Object.entries({ hud: r.hud, hands: r.hands, corner: r.corner, techs: r.techs, log: r.log })) {
+    for (const [name, q] of Object.entries({ hud: r.hud, corner: r.corner, technique: r.ctl, swap: r.swap, potion: r.potion, 'move ring': r.move, 'attack ring': r.attack, log: r.log })) {
       if (!q) continue;
       const inside = q.l >= S.l - 0.5 && q.r <= r.vw - S.r + 0.5 && q.t >= S.t - 0.5 && q.b <= r.vh - S.b + 0.5;
       check(inside, `${c.name}: ${name} sits inside the safe area (x ${Math.round(q.l)}..${Math.round(q.r)}, y ${Math.round(q.t)}..${Math.round(q.b)})`);
     }
+    // the bottom half is the controls: the rings sit in it, left and right, and the arc stays right of the middle
+    check(r.move && (r.move.t + r.move.b) / 2 > r.vh / 2 && r.move.r < r.vw / 2, `${c.name}: the move ring sits in the bottom left quarter`);
+    check(r.attack && (r.attack.t + r.attack.b) / 2 > r.vh / 2 && r.attack.l > r.vw / 2, `${c.name}: the attack ring sits in the bottom right quarter`);
+    check([r.ctl, r.swap, r.potion].every((q) => q && q.l >= r.vw / 2 - 1), `${c.name}: every button stays right of the middle`);
+    check([r.ctl, r.swap, r.potion].every((q) => q && (q.t + q.b) / 2 >= r.vh / 2 - 4), `${c.name}: every button sits in the bottom half (technique centre y ${Math.round((r.ctl.t + r.ctl.b) / 2)} of ${r.vh})`);
+    // the rings are drawn before any touch
+    const faint = await page.evaluate(() => getComputedStyle(document.querySelector('.zone.move .ring')).borderStyle);
+    check(faint === 'dashed', `${c.name}: the control rings show as outlines before a touch`);
     await ctx.close();
   }
   console.log(`${OUT}/home-screen-play.png, ${OUT}/safari-play.png`);

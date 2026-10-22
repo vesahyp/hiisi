@@ -9,7 +9,7 @@ import { audio } from '../audio';
 import { Rng } from '../game/rng';
 import { botInput, botSpend, BOT, HUMAN } from '../../tools/autoplayer';
 import { t, tr } from '../i18n';
-import { RARITY_COLOR, isMelee, kindName, makePotion, rollCoat, rollWeapon, type Item, type MeleeKind } from '../game/items';
+import { RARITY_COLOR, isMelee, kindIcon, makePotion, rollCoat, rollWeapon, type Item, type MeleeKind } from '../game/items';
 import { dropItem } from '../game/combat';
 import { NODE_BY_ID } from '../game/content/tree';
 import { held, heroStats, fighterOf } from '../game/hero';
@@ -70,6 +70,8 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
   const miniRef = useRef<HTMLCanvasElement>(null);
   const moveStickRef = useRef<HTMLDivElement>(null);
   const aimStickRef = useRef<HTMLDivElement>(null);
+  const moveZoneRef = useRef<HTMLDivElement>(null);
+  const aimZoneRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<InputController | null>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const overlayRef = useRef<Overlay>({ kind: 'none' });
@@ -97,6 +99,8 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
       const d = s.dungeon;
       for (let i = 0; i < d.seen.length; i++) if (d.tiles[i] !== 0 && d.seen[i] === 0) d.seen[i] = 1;
     };
+    // For the layout checks: where the hero is drawn, in css px.
+    (window as unknown as { __heroScreen: () => { x: number; y: number } }).__heroScreen = () => renderer.toScreen(s.hero.x, s.hero.y);
     // For scripts/arsenal-shots.mjs: a rolled weapon, and a dummy beside the hero.
     (window as unknown as { __roll: (kind: MeleeKind | 'bow', level: number, rarity: number) => Item }).__roll = (kind, level, rarity) => rollWeapon(s.rng, kind, level, rarity);
     (window as unknown as { __dummy: (kind: string, dx: number, dy: number) => void }).__dummy = (kind, dx, dy) => {
@@ -236,6 +240,8 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
       renderer.render(s, ov.kind === 'none' && hitStop <= 0 ? dt : 0);
       if (miniRef.current) renderer.drawMinimap(miniRef.current, s);
       drawSticks(input, moveStickRef.current, aimStickRef.current);
+      moveZoneRef.current?.classList.toggle('on', input.move.active);
+      aimZoneRef.current?.classList.toggle('on', input.aim.active);
       const ms = performance.now() - t0;
       perf.frames++;
       perf.ms += ms;
@@ -274,21 +280,41 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
       <canvas ref={canvasRef} />
       {hud && (
         <div className="hud">
-          <div className="floor">
-            {tr('Kerros', 'Floor')} <b>{hud.floor}</b>
-          </div>
-          <div className="lvl">
-            {tr('Taso', 'Level')} {hud.level}
-            <div className="bar xp">
-              <i style={{ width: `${Math.round(hud.xp * 100)}%` }} />
+          <div className="hudrow">
+            <div className="floor">
+              {tr('Kerros', 'Floor')} <b>{hud.floor}</b>
             </div>
-            {hud.points > 0 && <span className="pts">+{hud.points}</span>}
+            <div className="lvl">
+              {tr('Taso', 'Level')} {hud.level}
+              <div className="bar xp">
+                <i style={{ width: `${Math.round(hud.xp * 100)}%` }} />
+              </div>
+              {hud.points > 0 && <span className="pts">+{hud.points}</span>}
+            </div>
           </div>
           <div className="bar hp">
             <i style={{ width: `${Math.round((100 * hud.hp) / hud.maxHp)}%`, background: hud.hp < hud.maxHp * 0.3 ? 'linear-gradient(#ff8a70, #c03020)' : undefined }} />
             <span>
               {hud.hp} / {hud.maxHp}
             </span>
+          </div>
+          {/* the two hands as pills: icon, damage, the skill; a tap swaps */}
+          <div className="hands" data-ui>
+            {hud.hands.map((x, i) =>
+              x.item ? (
+                <button key={i} className={`slot ${x.active ? 'on' : ''}`} style={{ borderColor: RARITY_COLOR[x.item.rarity] }} onClick={() => !x.active && inputRef.current?.swap()} aria-label={t(x.item.name)}>
+                  <span className="sic">{kindIcon(x.item)}</span>
+                  <span className="sname" style={{ color: RARITY_COLOR[x.item.rarity] }}>
+                    {x.item.dmgMin}–{x.item.dmgMax}
+                  </span>
+                  <span className="req">{h.skills[isMelee(x.item.kind) ? 'lahi' : 'jousi'].lvl}</span>
+                </button>
+              ) : (
+                <div key={i} className="slot empty">
+                  {tr('tyhjä', 'empty')}
+                </div>
+              ),
+            )}
           </div>
           {hud.buffs.length > 0 && <div className="buffs">{hud.buffs.join(' · ')}</div>}
         </div>
@@ -309,10 +335,10 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
           <div className="s">{hud.banner.sub}</div>
         </div>
       )}
-      {hud && (
+      {hud && hud.log.length > 0 && (
         <div className="log">
-          {hud.log.map((l, i) => (
-            <div key={i} style={{ color: l.color, opacity: Math.max(0.35, 1 - l.age / 8) }}>
+          {hud.log.slice(-1).map((l, i) => (
+            <div key={i} style={{ color: l.color, opacity: Math.max(0.3, 1 - l.age / 6) }}>
               {l.text}
             </div>
           ))}
@@ -330,28 +356,6 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         </button>
       </div>
 
-      {hud && (
-        <div className="hands" data-ui>
-          {hud.hands.map((x, i) =>
-            x.item ? (
-              <button key={i} className={`slot ${x.active ? 'on' : ''}`} style={{ borderColor: RARITY_COLOR[x.item.rarity] }} onClick={() => !x.active && inputRef.current?.swap()}>
-                <div className="sname" style={{ color: RARITY_COLOR[x.item.rarity] }}>
-                  {t(x.item.name)}
-                </div>
-                <div className="skind">
-                  {kindName(x.item)} · {x.item.dmgMin}–{x.item.dmgMax}
-                </div>
-                <div className="req">{h.skills[isMelee(x.item.kind) ? 'lahi' : 'jousi'].lvl}</div>
-              </button>
-            ) : (
-              <div key={i} className="slot empty">
-                {tr('Tyhjä käsi', 'Empty hand')}
-              </div>
-            ),
-          )}
-        </div>
-      )}
-
       {/* What the walk-over rule left under the hero: one line in the left
           column, out of the play area (docs/loot-ui.md). A tap opens the
           comparison as a paused overlay; E takes it into the hand of its kind. */}
@@ -368,14 +372,24 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         </button>
       )}
 
-      <div className="techs" data-ui>
-        <button className="potion" onPointerDown={(e) => { e.preventDefault(); inputRef.current?.potion(); }} aria-label={tr('Juo parannusjuoma', 'Drink a healing potion')}>
-          🧪{hud && hud.potions > 0 && <b>{hud.potions}</b>}
-        </button>
+      {/* The bottom half is the controls, drawn always as faint outlines so a
+          new player sees where to touch: the move ring where the left thumb
+          rests, the attack ring under the right thumb, the buttons in an arc
+          round it. They brighten when touched. The real stick still starts
+          where the thumb lands. */}
+      <div className="zone move" ref={moveZoneRef}>
+        <div className="ring" />
+        <small>{tr('kävele', 'walk')}</small>
+      </div>
+      <div className="zone attack" ref={aimZoneRef}>
+        <div className="ring" />
+        <small>{tr('lyö · pito lataa', 'strike · hold charges')}</small>
+      </div>
+      <div className="ctl" data-ui>
         {hud?.techs.map((x, i) => (
           <button
             key={i}
-            className={`tech ${x.id ? '' : 'none'} ${x.ready ? 'ready' : ''} ${x.id && !x.usable ? 'off' : ''} ${i === 0 ? 'big' : ''}`}
+            className={`tech t${i + 1} ${x.id ? '' : 'none'} ${x.ready ? 'ready' : ''} ${x.id && !x.usable ? 'off' : ''}`}
             style={{ ['--f' as string]: `${Math.round((1 - x.cd) * 100)}%` }}
             onPointerDown={(e) => {
               e.preventDefault();
@@ -387,9 +401,12 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
             {x.name && <small>{x.name}</small>}
           </button>
         ))}
-        <button className={`swapbtn ${other ? '' : 'off'}`} style={other ? { borderColor: RARITY_COLOR[other.rarity] } : undefined} onPointerDown={(e) => { e.preventDefault(); if (other) inputRef.current?.swap(); }} aria-hidden={!other} aria-label={other ? tr(`Vaihda: ${t(other.name)}`, `Swap to ${t(other.name)}`) : undefined}>
+        <button className="potion" onPointerDown={(e) => { e.preventDefault(); inputRef.current?.potion(); }} aria-label={tr('Juo parannusjuoma', 'Drink a healing potion')}>
+          🧪{hud && hud.potions > 0 && <b>{hud.potions}</b>}
+        </button>
+        <button className={`swapbtn ${other ? '' : 'none'}`} style={other ? { borderColor: RARITY_COLOR[other.rarity] } : undefined} onPointerDown={(e) => { e.preventDefault(); if (other) inputRef.current?.swap(); }} aria-label={other ? tr(`Vaihda: ${t(other.name)}`, `Swap to ${t(other.name)}`) : tr('Vaihda kättä', 'Swap hands')}>
           <span>⇄</span>
-          {other && <small>{kindName(other).toLowerCase()}</small>}
+          {other && <small>{kindIcon(other)}</small>}
         </button>
       </div>
       <div className="stick" ref={moveStickRef}>

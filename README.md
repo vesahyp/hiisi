@@ -16,10 +16,13 @@ aukeaa ilman Safarin palkkeja, myös vaakatasossa. Tallennus ei siirry
 Safarista kuvakkeeseen: iOS pitää niille eri muistit, joten aloita
 kuvakkeesta uusi kierros.
 
-**Puhelimella:** vasen peukalo kävelee. Oikealla peukalolla napautus lyö tai
-ampuu lähintä vihollista jonka näet, veto näyttää tähtäyksen ja laukaisee
-kun nostat sormen, ja pito lataa: jousi jännittyy, miekka vetäytyy lyöntiin, ja nosto
-laukaisee. Ladattu miekka myös torjuu edestä, kun Torjunta on opittu. Kaksi tekniikkanappia oikean
+**Puhelimella:** ruudun alapuolisko on ohjaimet, ja ne näkyvät aina
+haaleina ääriviivoina: vasen rengas on kävely, oikea rengas on lyönti.
+Vasen peukalo kävelee. Oikealla peukalolla napautus lyö tai ampuu lähintä
+vihollista jonka näet, veto näyttää tähtäyksen ja laukaisee kun nostat
+sormen, ja pito lataa: jousi jännittyy, miekka vetäytyy lyöntiin, ja nosto
+laukaisee. Ladattu miekka myös torjuu edestä, kun Torjunta on opittu.
+Oikean renkaan ympärillä kaaressa ovat tekniikat, juoma ja käden vaihto. Kaksi tekniikkanappia oikean
 peukalon yllä tulevat taitopuusta. ⇄ vaihtaa kättä, 🧪 juo
 parannusjuoman. Pienoiskartta avaa koko kerroksen; ☰ avaa hahmon,
 taitopuun ja repun.

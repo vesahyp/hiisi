@@ -66,78 +66,102 @@ table.records .n { text-align: right; }
 /* game */
 .game { position: absolute; inset: 0; background: #07090a; }
 .game > canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
-.hud { position: absolute; left: calc(var(--sal) + 10px); top: calc(var(--sat) + 8px); pointer-events: none; text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,0.7); }
-.hud .floor { font-size: 15px; font-weight: 700; color: var(--muted); line-height: 1; }
-.hud .floor b { font-size: 28px; color: var(--gold); font-weight: 900; }
-.hud .lvl { font-size: 12px; font-weight: 800; color: var(--ink); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
-.hud .pts { color: #2a1800; background: var(--gold); border-radius: 8px; padding: 0 6px; font-size: 11px; animation: ptsPulse 0.9s ease-in-out infinite alternate; }
+
+/* The top strip: one compact block at the left (floor, level, health, the
+   two hands as pills), the minimap and two buttons at the right, the last
+   log line between. The bottom half of the screen belongs to the controls. */
+.hud { position: absolute; left: calc(var(--sal) + 8px); top: calc(var(--sat) + 6px); width: 168px; pointer-events: none; text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,0.7); }
+.hudrow { display: flex; align-items: baseline; gap: 8px; }
+.hud .floor { font-size: 12px; font-weight: 700; color: var(--muted); line-height: 1; white-space: nowrap; }
+.hud .floor b { font-size: 22px; color: var(--gold); font-weight: 900; }
+.hud .lvl { font-size: 11px; font-weight: 800; color: var(--ink); display: flex; gap: 5px; align-items: center; white-space: nowrap; }
+.hud .pts { color: #2a1800; background: var(--gold); border-radius: 8px; padding: 0 5px; font-size: 10px; animation: ptsPulse 0.9s ease-in-out infinite alternate; }
 @keyframes ptsPulse { from { transform: scale(1); } to { transform: scale(1.12); } }
-.hud .buffs { font-size: 11px; color: var(--venom); margin-top: 2px; font-weight: 700; }
+.hud .buffs { font-size: 10px; color: var(--venom); margin-top: 2px; font-weight: 700; }
 .bar { position: relative; height: 9px; border-radius: 5px; background: rgba(0,0,0,0.6); border: 1px solid rgba(0,0,0,0.8); overflow: hidden; }
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; transition: width 0.1s; }
-.bar.hp { width: 150px; height: 13px; margin-top: 4px; }
+.bar.hp { width: 168px; height: 12px; margin-top: 3px; }
 .bar.hp i { background: linear-gradient(#8aff70, #40c030); }
-.bar.xp { width: 80px; height: 6px; }
+.bar.xp { width: 44px; height: 5px; }
 .bar.xp i { background: var(--gold); }
 .bar.skill { width: 100%; height: 10px; }
 .bar.skill i { background: linear-gradient(#f0d070, #c08a20); }
-.bar span { position: absolute; inset: 0; font-size: 9px; font-weight: 800; text-align: center; line-height: 12px; color: #fff; text-shadow: 0 1px 2px #000; }
-.bossbar { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--sat) + 8px); width: min(40%, 320px); text-align: center; pointer-events: none; }
-@media (orientation: portrait) { .bossbar { top: calc(var(--sat) + 240px); width: 70%; } }
-.bossbar .name { font-weight: 900; font-size: 13px; color: #ffd040; letter-spacing: 0.04em; text-shadow: 0 1px 3px #000; }
-.bossbar .bar { height: 9px; border-radius: 5px; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,208,64,0.6); overflow: hidden; }
+.bar span { position: absolute; inset: 0; font-size: 9px; font-weight: 800; text-align: center; line-height: 11px; color: #fff; text-shadow: 0 1px 2px #000; }
+/* the two hands: pills under the health bar; a tap on the other swaps */
+.hands { display: flex; gap: 4px; margin-top: 4px; pointer-events: auto; }
+.slot { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; padding: 3px 5px; border-radius: 8px; border: 2px solid; background: rgba(8,12,8,0.6); opacity: 0.55; cursor: pointer; font-size: 10px; font-weight: 800; }
+.slot.on { opacity: 1; background: rgba(20,28,20,0.9); box-shadow: 0 0 8px rgba(224,176,72,0.35); }
+.slot.empty { border-color: rgba(236,230,210,0.2) !important; border-style: dashed; color: var(--muted); font-weight: 600; justify-content: center; }
+.slot .sic { font-size: 13px; line-height: 1; }
+.slot .sname { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; }
+.slot .req { width: 16px; height: 16px; border-radius: 50%; font-size: 9px; font-weight: 900; line-height: 16px; text-align: center; color: #2a1800; background: var(--gold); flex: none; }
+.bossbar { position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--sat) + 70px); width: min(44%, 320px); text-align: center; pointer-events: none; }
+.bossbar .name { font-weight: 900; font-size: 12px; color: #ffd040; letter-spacing: 0.04em; text-shadow: 0 1px 3px #000; }
+.bossbar .bar { height: 8px; border-radius: 5px; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,208,64,0.6); overflow: hidden; }
 .bossbar .bar > div { height: 100%; background: linear-gradient(#ffd870, #c08a20); transition: width 0.1s; }
-.banner { position: absolute; left: 0; right: 0; top: 36%; text-align: center; pointer-events: none; animation: bannerIn 0.35s ease-out; }
-.banner .t { font-size: 38px; font-weight: 900; color: var(--gold); text-shadow: 0 3px 0 #1a2a10, 0 6px 20px rgba(0,0,0,0.9); letter-spacing: 0.02em; }
-.banner .s { font-size: 15px; color: #fff; text-shadow: 0 1px 4px #000; margin-top: 2px; font-weight: 700; }
+.banner { position: absolute; left: 0; right: 0; top: 30%; text-align: center; pointer-events: none; animation: bannerIn 0.35s ease-out; }
+.banner .t { font-size: 34px; font-weight: 900; color: var(--gold); text-shadow: 0 3px 0 #1a2a10, 0 6px 20px rgba(0,0,0,0.9); letter-spacing: 0.02em; }
+.banner .s { font-size: 14px; color: #fff; text-shadow: 0 1px 4px #000; margin-top: 2px; font-weight: 700; }
 @keyframes bannerIn { from { transform: scale(1.5); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (orientation: landscape) and (max-height: 500px) { .banner { top: 30%; } .banner .t { font-size: 24px; } .banner .s { font-size: 12px; } }
+@media (orientation: landscape) and (max-height: 500px) { .banner { top: 24%; } .banner .t { font-size: 24px; } .banner .s { font-size: 12px; } }
 
-/* the message log */
-.log { position: absolute; left: calc(var(--sal) + 10px); width: 150px; top: calc(var(--sat) + 232px); pointer-events: none; text-align: left; font-size: 11px; font-weight: 700; text-shadow: 0 1px 3px #000, 0 0 8px #000; line-height: 1.3; }
+/* the last log line: a thin line between the left block and the right buttons, never in a control zone */
+.log { position: absolute; left: calc(var(--sal) + 184px); right: calc(var(--sar) + 150px); top: calc(var(--sat) + 10px); pointer-events: none; text-align: center; font-size: 11px; font-weight: 700; text-shadow: 0 1px 3px #000, 0 0 8px #000; line-height: 1.3; }
 .log div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* portrait: the left column is short, so the log sits at the bottom centre, between the thumbs */
-@media (orientation: portrait) { .log { left: 50%; transform: translateX(-50%); width: 250px; top: auto; bottom: calc(var(--sab) + 12px); text-align: center; } }
+@media (orientation: portrait) { .log { left: calc(var(--sal) + 184px); right: calc(var(--sar) + 8px); top: calc(var(--sat) + 96px); text-align: left; } }
 
-/* the two hands */
-.hands { position: absolute; left: calc(var(--sal) + 10px); top: calc(var(--sat) + 82px); display: flex; flex-direction: column; gap: 5px; }
-.slot { position: relative; width: 150px; text-align: left; padding: 5px 30px 5px 8px; border-radius: 9px; border: 2px solid; background: rgba(8,12,8,0.6); opacity: 0.6; cursor: pointer; }
-.slot.on { opacity: 1; background: rgba(20,28,20,0.88); box-shadow: 0 0 10px rgba(224,176,72,0.3); }
-.slot.empty { border-color: rgba(236,230,210,0.2) !important; border-style: dashed; color: var(--muted); font-size: 11px; cursor: default; }
-.slot .sname { font-size: 10px; line-height: 1.2; font-weight: 800; }
-.slot .skind { font-size: 9px; color: var(--muted); margin-top: 1px; }
-.slot .req { position: absolute; right: 6px; top: 50%; margin-top: -9px; width: 18px; height: 18px; border-radius: 50%; font-size: 9px; font-weight: 900; line-height: 18px; text-align: center; color: #2a1800; background: var(--gold); box-shadow: 0 0 0 2px #2a1800; }
-
-/* top right: minimap, sheet, pause */
-.corner { position: absolute; right: calc(var(--sar) + 10px); top: calc(var(--sat) + 8px); display: flex; gap: 6px; align-items: flex-start; }
-.minimap { width: 86px; height: 70px; padding: 0; border-radius: 8px; border: 2px solid rgba(255,255,255,0.18); background: rgba(8,10,12,0.85); overflow: hidden; cursor: pointer; }
+/* top right: minimap, sheet, pause, small */
+.corner { position: absolute; right: calc(var(--sar) + 8px); top: calc(var(--sat) + 6px); display: flex; gap: 5px; align-items: flex-start; }
+.minimap { width: 64px; height: 52px; padding: 0; border-radius: 8px; border: 2px solid rgba(255,255,255,0.18); background: rgba(8,10,12,0.85); overflow: hidden; cursor: pointer; }
 .minimap canvas { width: 100%; height: 100%; display: block; }
-.iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: rgba(8,10,12,0.7); font-size: 17px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.iconbtn { width: 34px; height: 34px; border-radius: 9px; border: 2px solid rgba(255,255,255,0.15); background: rgba(8,10,12,0.7); font-size: 15px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .iconbtn.pulse { border-color: var(--gold); color: var(--gold); animation: ptsPulse 0.9s ease-in-out infinite alternate; }
 
-/* techniques, the potion and the swap, above the right thumb; in a short
-   landscape viewport a 2 by 2 block at the bottom right, so they never
-   climb into the top-right buttons */
-.techs { position: absolute; right: calc(var(--sar) + 12px); bottom: calc(var(--sab) + 36%); display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
-@media (orientation: landscape) and (max-height: 500px) { .techs { bottom: calc(var(--sab) + 10px); flex-direction: row-reverse; flex-wrap: wrap-reverse; width: 150px; justify-content: flex-start; align-items: flex-end; gap: 8px; } .techs .potion { order: 3; } .techs .swapbtn { order: 4; } .tech.big { width: 64px; height: 64px; } .tech.big span { font-size: 24px; } }
-.tech { position: relative; width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 3px solid rgba(0,0,0,0.6); background: conic-gradient(var(--gold) var(--f, 100%), rgba(10,14,10,0.7) 0); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.92; cursor: pointer; touch-action: none; }
-.tech::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: rgba(10,14,10,0.88); }
-.tech span { position: relative; font-size: 22px; line-height: 1; }
-.tech small { position: relative; font-size: 8px; font-weight: 800; color: var(--muted); margin-top: 2px; max-width: 52px; text-align: center; line-height: 1.05; }
-.tech.big { width: 72px; height: 72px; }
-.tech.big span { font-size: 28px; }
-.tech.ready { box-shadow: 0 0 14px rgba(255,208,64,0.6); }
-.tech.ready small { color: #fff; }
-.tech.none { opacity: 0.35; border-style: dashed; background: rgba(10,14,10,0.5); }
-.tech.off { opacity: 0.4; }
-.tech:active { transform: scale(0.94); }
-.potion { position: relative; width: 46px; height: 46px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15); background: rgba(10,14,10,0.8); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; touch-action: none; padding: 0; }
-.potion b { position: absolute; right: -6px; top: -6px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 10px; line-height: 18px; text-align: center; padding: 0 4px; }
-.swapbtn { width: 54px; height: 54px; padding: 0; border-radius: 50%; border: 3px solid; background: rgba(10,14,10,0.85); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer; touch-action: none; }
-.swapbtn:active { transform: scale(0.92); }
-.swapbtn.off { visibility: hidden; }
-.swapbtn span { font-size: 20px; line-height: 1; font-weight: 900; }
-.swapbtn small { font-size: 8px; font-weight: 800; line-height: 1; }
+/* The control zones: faint rings where the thumbs rest, in the bottom
+   half, and the buttons in an arc round the right thumb. The centres are
+   --mx/--ax from the edges and --cy from the bottom. */
+:root { --cy: calc(var(--sab) + 150px); --mx: calc(var(--sal) + 22vw); --ax: calc(var(--sar) + 22vw); }
+.zone { position: absolute; bottom: var(--cy); width: 0; height: 0; pointer-events: none; }
+.zone.move { left: var(--mx); }
+.zone.attack { right: var(--ax); }
+.zone .ring { position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; border-radius: 50%; border: 2px dashed rgba(255,240,210,0.28); background: rgba(255,240,210,0.03); transition: border-color 0.1s, background 0.1s; }
+.zone.attack .ring { border-color: rgba(255,200,80,0.32); background: rgba(255,200,80,0.04); }
+.zone.attack .ring::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 2px solid rgba(255,200,80,0.35); }
+.zone small { position: absolute; left: -70px; top: 50px; width: 140px; text-align: center; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; color: rgba(236,230,210,0.35); white-space: nowrap; }
+.zone.on .ring { border-color: rgba(255,240,210,0.7); background: rgba(255,240,210,0.08); }
+.zone.attack.on .ring { border-color: rgba(255,200,80,0.8); background: rgba(255,200,80,0.1); }
+.zone.on small { color: rgba(236,230,210,0.6); }
+.ctl { position: absolute; right: var(--ax); bottom: var(--cy); width: 0; height: 0; }
+.ctl > button { position: absolute; margin: 0; padding: 0; transform: translate(-50%, 50%); cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; }
+.ctl .tech { width: 54px; height: 54px; border-radius: 50%; border: 2px dashed rgba(255,240,210,0.3); background: conic-gradient(var(--gold) var(--f, 100%), rgba(10,14,10,0.55) 0); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.95; }
+.ctl .tech::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: rgba(10,14,10,0.85); }
+.ctl .tech span { position: relative; font-size: 20px; line-height: 1; }
+.ctl .tech small { position: relative; font-size: 7.5px; font-weight: 800; color: var(--muted); margin-top: 1px; max-width: 48px; text-align: center; line-height: 1.05; }
+.ctl .tech.t1 { left: -22px; bottom: 112px; width: 62px; height: 62px; border-style: solid; border-color: rgba(0,0,0,0.6); }
+.ctl .tech.t1 span { font-size: 24px; }
+.ctl .tech.t2 { left: -84px; bottom: 66px; }
+.ctl .tech.ready { box-shadow: 0 0 14px rgba(255,208,64,0.6); border-color: rgba(0,0,0,0.6); border-style: solid; }
+.ctl .tech.ready small { color: #fff; }
+.ctl .tech.none { background: rgba(10,14,10,0.4); }
+.ctl .tech.none span { color: rgba(236,230,210,0.4); }
+.ctl .tech.off { opacity: 0.45; }
+.ctl .potion { left: -100px; bottom: 6px; width: 46px; height: 46px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.18); background: rgba(10,14,10,0.75); display: flex; align-items: center; justify-content: center; font-size: 21px; }
+.ctl .potion b { position: absolute; right: -6px; top: -6px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 10px; line-height: 18px; text-align: center; padding: 0 4px; }
+.ctl .swapbtn { left: -76px; bottom: -54px; width: 50px; height: 50px; border-radius: 50%; border: 3px solid; background: rgba(10,14,10,0.8); color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.ctl .swapbtn.none { border: 2px dashed rgba(255,240,210,0.3); color: rgba(236,230,210,0.4); }
+.ctl .swapbtn span { font-size: 18px; line-height: 1; font-weight: 900; }
+.ctl .swapbtn small { font-size: 11px; line-height: 1; }
+.ctl > button:active { transform: translate(-50%, 50%) scale(0.92); filter: brightness(1.4); }
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --cy: calc(var(--sab) + 100px); }
+  /* a short screen: the arc hugs the ring so it stays in the bottom half */
+  .ctl .tech.t1 { left: -62px; bottom: 58px; width: 56px; height: 56px; }
+  .ctl .tech.t1 span { font-size: 22px; }
+  .ctl .tech.t2 { left: -108px; bottom: 12px; width: 50px; height: 50px; }
+  .ctl .potion { left: -92px; bottom: -42px; }
+  .ctl .swapbtn { left: -66px; bottom: -58px; }
+  .zone small { top: 56px; }
+}
 
 .stick { position: absolute; width: 128px; height: 128px; border-radius: 50%; border: 2px solid rgba(255,240,210,0.35); background: rgba(255,240,210,0.07); transform: translate(-50%, -50%); pointer-events: none; display: none; }
 .stick > div { position: absolute; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,240,210,0.65); left: 50%; top: 50%; transform: translate(-50%, -50%); }
@@ -145,7 +169,7 @@ table.records .n { text-align: right; }
 .stick.aim > div { background: rgba(255,200,80,0.75); }
 
 /* the loot chip: one line under the hands, in the left column (docs/loot-ui.md) */
-.lootchip { position: absolute; left: calc(var(--sal) + 10px); top: calc(var(--sat) + 192px); width: 150px; padding: 4px 8px; border-radius: 9px; border: 2px solid; background: rgba(20,28,20,0.92); text-align: left; cursor: pointer; animation: chipIn 0.18s ease-out; display: flex; flex-direction: column; gap: 1px; }
+.lootchip { position: absolute; left: calc(var(--sal) + 8px); top: calc(var(--sat) + 92px); width: 168px; padding: 4px 8px; border-radius: 9px; border: 2px solid; background: rgba(20,28,20,0.92); text-align: left; cursor: pointer; animation: chipIn 0.18s ease-out; display: flex; flex-direction: column; gap: 1px; }
 @keyframes chipIn { from { transform: translateX(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
 .lootchip .lname { font-size: 10px; font-weight: 800; line-height: 1.15; }
 .lootchip .lnum { font-size: 9px; color: var(--muted); font-weight: 700; }

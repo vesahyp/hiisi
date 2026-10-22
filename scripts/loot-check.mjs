@@ -32,14 +32,15 @@ for (const [orient, viewport] of [['portrait', devices['iPhone 15'].viewport], [
   try {
     const vw = viewport.width;
     const vh = viewport.height;
-    // the hero's part of the screen: a box round where the hero is drawn
-    const heroBox = { x: vw / 2 - 90, y: vh / 2 - 90, width: 180, height: 180 };
     // a still hero (no bot), so a drop stays under the feet while it is measured
     await page.goto(`http://localhost:${port}/?lang=fi&seed=4242`);
     await page.evaluate(() => localStorage.clear());
     await page.goto(`http://localhost:${port}/?lang=fi&seed=4242`);
     await page.getByRole('button', { name: 'Pelaa', exact: true }).tap();
     await page.waitForFunction(() => window.__sim && window.__sim.time > 0.3, null, { timeout: 15000 });
+    // the hero's part of the screen: a box round where the hero is drawn
+    const hs = await page.evaluate(() => window.__heroScreen());
+    const heroBox = { x: hs.x - 90, y: hs.y - 90, width: 180, height: 180 };
     // a worse weapon: the walk-over rule leaves it, the chip shows
     await page.evaluate(() => window.__drop('sword', 0));
     const shown = await page.waitForSelector('.lootchip', { timeout: 5000 }).then(() => true, () => false);
@@ -50,20 +51,19 @@ for (const [orient, viewport] of [['portrait', devices['iPhone 15'].viewport], [
     check(shown, `${orient}: a worse sword under the hero shows the chip`);
     await page.waitForTimeout(300);
     const chip = await box(page, '.lootchip');
-    check(chip && !overlaps(chip, heroBox) && chip.x + chip.width <= vw / 2 - 30, `${orient}: the chip sits in the left column, off the hero (x ${Math.round(chip?.x ?? -1)}, w ${Math.round(chip?.width ?? -1)})`);
+    check(chip && !overlaps(chip, heroBox) && chip.y + chip.height <= vh / 2, `${orient}: the chip sits in the top strip, off the hero (x ${Math.round(chip?.x ?? -1)}, w ${Math.round(chip?.width ?? -1)})`);
     await page.screenshot({ path: `${dir}/${orient}-chip.png` });
-    for (const sel of ['.hud', '.hands', '.lootchip', '.log', '.techs', '.corner']) {
+    for (const sel of ['.hud', '.lootchip', '.log', '.ctl .tech.t1', '.ctl .tech.t2', '.ctl .potion', '.ctl .swapbtn', '.zone.move .ring', '.zone.attack .ring', '.corner']) {
       const b = await box(page, sel);
       check(!overlaps(b, heroBox), `${orient}: ${sel} stays off the hero's part of the screen (${b ? `x ${Math.round(b.x)}..${Math.round(b.x + b.width)}, y ${Math.round(b.y)}..${Math.round(b.y + b.height)}` : 'absent'}; hero x ${heroBox.x}..${heroBox.x + heroBox.width}, y ${heroBox.y}..${heroBox.y + heroBox.height})`);
     }
-    const techs = await box(page, '.techs');
+    const techs = await box(page, '.ctl .tech.t1');
     const corner = await box(page, '.corner');
-    check(!overlaps(techs, corner), `${orient}: the technique block is clear of the top-right buttons`);
-    const labels = await page.locator('.tech.none small').count();
+    check(!overlaps(techs, corner), `${orient}: the technique buttons are clear of the top-right buttons`);
+    const labels = await page.locator('.ctl .tech.none small').count();
     check(labels === 0, `${orient}: empty technique buttons carry no label (${labels} labels)`);
     const log = await box(page, '.log');
-    if (orient === 'landscape') check(log && log.x + log.width <= vw / 2 - 30, `${orient}: the log stays in the left column (ends at x ${Math.round((log?.x ?? 0) + (log?.width ?? 0))})`);
-    else check(log && log.y >= heroBox.y + heroBox.height, `${orient}: the log sits under the hero's part of the screen (y ${Math.round(log?.y ?? 0)})`);
+    check(log && log.y + log.height <= vh / 2 && log.y + log.height <= heroBox.y, `${orient}: the log is a line in the top strip (y ${Math.round(log?.y ?? 0)}..${Math.round((log?.y ?? 0) + (log?.height ?? 0))})`);
     // the chip opens the comparison; Jätä closes it and the drop stays
     await page.locator('.lootchip').tap();
     await page.waitForSelector('.overlay.loot', { timeout: 3000 });
