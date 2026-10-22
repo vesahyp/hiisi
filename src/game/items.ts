@@ -154,12 +154,12 @@ export function makePotion(kind: PotionKind, colors: Record<PotionKind, string>,
 /** What a floor drops: the rarity curve by floor, kinds by weight. */
 export function rollDrop(rng: Rng, floor: number, colors: Record<PotionKind, string>, bonus = 0): Item {
   const roll = rng.next();
-  if (roll < 0.42) {
-    const kind = rng.weighted<PotionKind>(['heal', 'strength', 'speed', 'poison'], (k) => (k === 'heal' ? 5 : k === 'poison' ? 1.2 : 2));
+  if (roll < 0.3) {
+    const kind = rng.weighted<PotionKind>(['heal', 'strength', 'speed', 'poison'], (k) => (k === 'heal' ? 3 : k === 'poison' ? 1.2 : 2));
     return makePotion(kind, colors);
   }
   const rarity = rollRarity(rng, floor, bonus);
-  if (roll < 0.5) return rollCoat(rng, floor, rarity);
+  if (roll < 0.4) return rollCoat(rng, floor, rarity);
   return rollWeapon(rng, rng.chance(0.5) ? 'sword' : 'bow', floor, rarity);
 }
 

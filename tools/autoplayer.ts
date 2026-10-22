@@ -1,4 +1,4 @@
-import { distanceField, flowDir, lineOfSight, openDir, T, UNSEEN, VISIBLE, seenAt } from '../src/game/dungeon';
+import { clearShot, distanceField, flowDir, lineOfSight, openDir, T, UNSEEN, VISIBLE, seenAt } from '../src/game/dungeon';
 import { NO_INPUT, type Enemy, type Hero, type HeroInput, type SimState } from '../src/game/state';
 import { DT } from '../src/game/sim';
 import { nearestVisible, swordReach, bowRange } from '../src/game/attacks';
@@ -41,12 +41,14 @@ interface Mem {
   stuckT: number;
   lastX: number;
   lastY: number;
+  /** the direction a stuck bot tries, held for a moment */
+  jiggle: { a: number; until: number } | null;
 }
 const mems = new WeakMap<SimState, Mem>();
 function memOf(s: SimState): Mem {
   let m = mems.get(s);
   if (!m) {
-    m = { seen: new Map(), mx: 0, my: 0, lastTap: -1, goal: -1, holdSince: -1, ignore: new Map(), wantSince: 0, wantId: -1, stuckT: 0, lastX: 0, lastY: 0 };
+    m = { seen: new Map(), mx: 0, my: 0, lastTap: -1, goal: -1, holdSince: -1, ignore: new Map(), wantSince: 0, wantId: -1, stuckT: 0, lastX: 0, lastY: 0, jiggle: null };
     mems.set(s, m);
   }
   return m;
@@ -139,9 +141,16 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
         mx = -dx;
         my = -dy;
       }
+      // a wall corner in the arrow's way: close in until the shot is clear
+      const clear = sees && clearShot(d, h.x, h.y, tgt.x, tgt.y);
+      if (sees && !clear && td > 1.5 * T) {
+        const f = walkTo(s, h, tgt.x, tgt.y);
+        mx = f.dx;
+        my = f.dy;
+      }
       // draw to full when the draw pays, else tap
       const full = has(h, 'jannitys');
-      if (sees && td < bowRange(it)) {
+      if ((clear || td <= 1.5 * T) && td < bowRange(it)) {
         if (full) {
           if (h.draw < 1) inp.hold = true;
           else inp.holdRelease = true;
@@ -304,23 +313,29 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
     inp.mx = o.dx;
     inp.my = o.dy;
   }
-  // stuck against something: jiggle
-  if (Math.hypot(h.x - mem.lastX, h.y - mem.lastY) < 0.5 && m > 0.01) mem.stuckT += DT;
-  else mem.stuckT = 0;
-  mem.lastX = h.x;
-  mem.lastY = h.y;
-  if (mem.stuckT > 0.6) {
-    const a = rng.range(0, Math.PI * 2);
-    inp.mx = Math.cos(a);
-    inp.my = Math.sin(a);
-    if (mem.stuckT > 1.2) mem.stuckT = 0;
-  }
   if (who.thumb > 0) {
     const k = Math.min(1, DT / who.thumb);
     mem.mx += (inp.mx - mem.mx) * k;
     mem.my += (inp.my - mem.my) * k;
     inp.mx = mem.mx;
     inp.my = mem.my;
+  }
+  // stuck against something with the stick well over: one direction, held a moment
+  const pushing = Math.hypot(inp.mx, inp.my) > 0.6;
+  if (pushing && Math.hypot(h.x - mem.lastX, h.y - mem.lastY) < 0.3) mem.stuckT += DT;
+  else if (!mem.jiggle) mem.stuckT = 0;
+  mem.lastX = h.x;
+  mem.lastY = h.y;
+  if (mem.stuckT > 0.6 && !mem.jiggle) mem.jiggle = { a: rng.range(0, Math.PI * 2), until: s.time + 0.5 };
+  if (mem.jiggle) {
+    inp.mx = Math.cos(mem.jiggle.a);
+    inp.my = Math.sin(mem.jiggle.a);
+    mem.mx = inp.mx;
+    mem.my = inp.my;
+    if (s.time > mem.jiggle.until) {
+      mem.jiggle = null;
+      mem.stuckT = 0;
+    }
   }
   if ((inp.attack || inp.holdRelease) && who.taps < Infinity) {
     if (s.time - mem.lastTap < 1 / who.taps) {

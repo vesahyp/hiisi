@@ -8,7 +8,7 @@ export function GuideBody() {
     [tr('Oikea veto', 'Right drag'), tr('näyttää tähtäyksen; nosto lyö tai ampuu sen suuntaan.', 'shows the aim; lifting strikes or shoots along it.')],
     [tr('Oikea pito', 'Right hold'), tr('jousi jännittyy (täysi jännitys lävistää, kun Jännitys on opittu). Miekka torjuu edestä, kun Torjunta on opittu.', 'the bow draws (a full draw pierces once Draw is learned). The sword blocks from the front once Parry is learned.')],
     [tr('Tekniikat', 'Techniques'), tr('kaksi nappia oikean peukalon yllä. Ne tulevat taitopuusta ja tarvitsevat oikean aseen käteen.', 'two buttons above the right thumb. They come from the tree and need the right weapon in hand.')],
-    [tr('⇄', '⇄'), tr('vaihtaa kättä: miekasta jouseen ja takaisin.', 'swaps hands: sword to bow and back.')],
+    [tr('⇄', '⇄'), tr('vaihtaa kättä: miekasta jouseen ja takaisin. Käden kultainen numero on sen aseen taito.', 'swaps hands: sword to bow and back. The gold number on a hand is that weapon\'s skill.')],
     [tr('🧪', '🧪'), tr('juo parannusjuoman. Muut juomat juodaan repusta.', 'drinks a healing potion. Other potions are drunk from the pack.')],
     [tr('Pienoiskartta', 'The minimap'), tr('avaa koko kerroksen. Portaat alas ovat kauimmaisessa huoneessa.', 'opens the whole floor. The stairs down are in the farthest room.')],
     [tr('Taidot', 'Skills'), tr('nousevat osumista. Katto on kerros + 5, joten syvemmälle meno nostaa kattoa. Taso antaa pisteen taitopuuhun.', 'rise from hits. The cap is floor + 5, so going deeper raises it. A level gives a point for the tree.')],

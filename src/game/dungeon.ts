@@ -166,12 +166,20 @@ export function freeSpot(d: Dungeon, x: number, y: number, r: number): { x: numb
 /** True when nothing that stops an arrow lies on the segment. */
 export function lineOfSight(d: Dungeon, x0: number, y0: number, x1: number, y1: number): boolean {
   const dist = Math.hypot(x1 - x0, y1 - y0);
-  const n = Math.ceil(dist / 8);
+  const n = Math.ceil(dist / 4);
   for (let i = 1; i < n; i++) {
     const f = i / n;
     if (solidShot(tileAt(d, x0 + (x1 - x0) * f, y0 + (y1 - y0) * f))) return false;
   }
   return true;
+}
+
+/** A line of sight as wide as an arrow: the centre line and one to each side. A wall corner the eye misses still stops the shot. */
+export function clearShot(d: Dungeon, x0: number, y0: number, x1: number, y1: number, r = 5): boolean {
+  const dist = Math.hypot(x1 - x0, y1 - y0) || 1;
+  const px = (-(y1 - y0) / dist) * r;
+  const py = ((x1 - x0) / dist) * r;
+  return lineOfSight(d, x0, y0, x1, y1) && lineOfSight(d, x0 + px, y0 + py, x1 + px, y1 + py) && lineOfSight(d, x0 - px, y0 - py, x1 - px, y1 - py);
 }
 
 /** BFS distance in tiles from the given points; -1 where no walk reaches. Doors count as open: a walker opens them. */
@@ -303,20 +311,20 @@ export function generateDungeon(seed: number, floor: number): Dungeon {
 }
 
 function tryGenerate(rng: Rng, floor: number): Dungeon | null {
-  const w = Math.min(60, 40 + floor * 3);
-  const h = Math.min(48, 32 + floor * 3);
+  const w = Math.min(64, 46 + floor * 3);
+  const h = Math.min(52, 38 + floor * 3);
   const tiles = new Uint8Array(w * h);
   const roomAt = new Int16Array(w * h).fill(-1);
   const rooms: Room[] = [];
-  const want = Math.min(9, 6 + Math.floor(floor / 2));
+  const want = Math.min(9, 7 + Math.floor(floor / 2));
   const get = (x: number, y: number) => tiles[y * w + x];
   const set = (x: number, y: number, t: number) => {
     if (x >= 0 && y >= 0 && x < w && y < h) tiles[y * w + x] = t;
   };
   // Rooms: random rectangles, two tiles apart.
   for (let k = 0; k < 400 && rooms.length < want; k++) {
-    const rw = rng.int(4, 9);
-    const rh = rng.int(3, 7);
+    const rw = rng.int(5, 11);
+    const rh = rng.int(4, 8);
     const x = rng.int(2, w - rw - 3);
     const y = rng.int(2, h - rh - 3);
     let clash = false;

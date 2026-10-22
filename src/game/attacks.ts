@@ -300,11 +300,12 @@ export function updateProjectiles(s: SimState, dt: number): void {
       }
     }
     const step = Math.hypot(p.vx, p.vy) * dt;
-    const n = Math.max(1, Math.ceil(step / 6));
+    const n = Math.max(1, Math.ceil(step / 4));
     for (let i = 0; i < n && !p.dead; i++) {
       p.x += (p.vx * dt) / n;
       p.y += (p.vy * dt) / n;
       p.left -= step / n;
+      // (the sub-step is the line of sight's sampling, so what the eye sees the arrow reaches)
       if (p.left <= 0 || solidShot(tileAt(d, p.x, p.y))) {
         p.dead = true;
         if (p.left > 0) s.sounds.push('thud');

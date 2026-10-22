@@ -100,7 +100,7 @@ export function enemyStep(s: SimState, e: Enemy, dt: number): void {
         }
         return;
       }
-      if (e.def.boss && e.swipes >= 2 && dist > 3 * T && dist < 9 * T && sees && e.cd <= 0) {
+      if (e.def.boss && e.swipes >= 1 && dist > 3 * T && dist < 9 * T && sees && e.cd <= 0) {
         e.mode = 'windup';
         e.t = e.def.windup;
         e.struck = false;
@@ -125,7 +125,7 @@ export function enemyStep(s: SimState, e: Enemy, dt: number): void {
         // a slow arrow, the kind you can step out of
         const sp = 190;
         const a = Math.atan2(dy, dx) + s.rng.range(-0.05, 0.05);
-        s.projectiles.push({ id: s.nextId++, x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 4, team: 1, dmg: e.def.dmg, left: e.def.reach + 40, pierce: 0, hit: new Set(), kind: 'enemyArrow', skill: null, homing: 0, dead: false });
+        s.projectiles.push({ id: s.nextId++, x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 4, team: 1, dmg: enemyDamage(e), left: e.def.reach + 40, pierce: 0, hit: new Set(), kind: 'enemyArrow', skill: null, homing: 0, dead: false });
         s.sounds.push('bowshot');
         e.mode = 'chase';
         return;
@@ -156,7 +156,7 @@ export function enemyStep(s: SimState, e: Enemy, dt: number): void {
       e.chargeLeft -= step;
       if (dist < e.r + h.r + 4 && !e.struck) {
         e.struck = true;
-        hurtHero(s, e.def.dmg * 1.4, t(e.def.name), Math.atan2(uy, ux));
+        hurtHero(s, enemyDamage(e) * 1.4, t(e.def.name), Math.atan2(uy, ux));
       }
       if (e.chargeLeft <= 0 || moved < step * 0.5) {
         e.mode = 'stagger';
@@ -174,6 +174,11 @@ export function enemyStep(s: SimState, e: Enemy, dt: number): void {
       return;
     }
   }
+}
+
+/** What an enemy's blow does on its floor. */
+export function enemyDamage(e: Enemy): number {
+  return Math.round(e.def.dmg * (1 + 0.15 * (e.level - 1)));
 }
 
 function strike(s: SimState, e: Enemy, dist: number, ux: number, uy: number): void {
@@ -195,11 +200,11 @@ function strike(s: SimState, e: Enemy, dist: number, ux: number, uy: number): vo
         e.t = 1.5;
         s.texts.push({ x: e.x, y: e.y - e.r - 14, text: tr('horjuu', 'staggers'), color: '#ffd040', life: 1, size: 12 });
         s.sounds.push('parry');
-      } else hurtHero(s, e.def.dmg * 0.3, t(e.def.name));
+      } else hurtHero(s, enemyDamage(e) * 0.3, t(e.def.name));
       return;
     }
   }
-  hurtHero(s, e.def.dmg, t(e.def.name), Math.atan2(uy, ux));
+  hurtHero(s, enemyDamage(e), t(e.def.name), Math.atan2(uy, ux));
 }
 
 function walk(s: SimState, e: Enemy, mx: number, my: number, dt: number): void {

@@ -98,7 +98,7 @@ export function startFloor(s: SimState): void {
 
 export function spawn(s: SimState, defId: string, x: number, y: number, room: number, asleep: boolean): Enemy {
   const def = ENEMY_BY_ID[defId];
-  const hpMul = 1 + (s.floor - 1) * 0.12;
+  const hpMul = 1 + (s.floor - 1) * 0.2;
   const e: Enemy = {
     id: s.nextId++,
     def,

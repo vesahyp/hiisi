@@ -5,7 +5,7 @@ import { rollDrop, rollWeapon, type Item } from './items';
 import { t, tr } from '../i18n';
 import { say } from './log';
 import { LAST_FLOOR } from './state';
-import { freeSpot } from './dungeon';
+import { freeSpot, T } from './dungeon';
 
 /**
  * Every hit goes through one of two functions, Höyry's rule: hurtEnemy and
@@ -109,6 +109,15 @@ export function wake(s: SimState, e: Enemy, hurt = false): void {
   if (!e.aware) {
     e.aware = true;
     e.alertT = 1.2;
+    // the room wakes with it: a pack, the way a NetHack room empties at you
+    for (const o of s.enemies) {
+      if (o === e || o.dead || o.aware || o.room !== e.room || o.def.boss) continue;
+      if (Math.hypot(o.x - e.x, o.y - e.y) > 7 * T) continue;
+      if (o.mode === 'sleep' && !s.rng.chance(0.5)) continue;
+      o.aware = true;
+      o.alertT = 1.2;
+      if (o.mode === 'sleep') o.mode = 'idle';
+    }
     if (e.def.boss) {
       s.banner = { text: t(e.def.name), sub: tr('Väistä rynnäkkö sivulle', 'Sidestep the charge'), life: 2.6, color: '#ff8a70' };
       s.sounds.push('boss');

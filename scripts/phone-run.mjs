@@ -31,7 +31,7 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 try {
-  await page.goto(`http://localhost:${port}/?bot=human&speed=1&seed=${seed}`);
+  await page.goto(`http://localhost:${port}/?bot=human&speed=1&lang=fi&seed=${seed}`);
   await page.getByRole('button', { name: 'Pelaa', exact: true }).tap();
   await page.waitForFunction(() => window.__sim && window.__sim.floor === 1, null, { timeout: 15000 });
   let shot = 0;

@@ -1,13 +1,14 @@
 # Hiisi: the plan
 
-Working name **Hiisi**. A NetHack-style action RPG for the phone, played with
-Höyry's hands. Written 2026-10-22, before any game code. The mockups are at
+**Hiisi**. A NetHack-style action RPG for the phone, played with Höyry's
+hands. Written 2026-10-22, before any game code; the decisions at the end
+were made the same day. The mockups are at
 https://vesahyp.github.io/hiisi/ and the research behind the choices in
 [`research.md`](research.md).
 
 ## Name
 
-Three short Finnish names. The working name is the first until Vesa picks.
+Three short Finnish names were proposed; Vesa picked the first.
 
 | Name | Why |
 |------|-----|
@@ -147,10 +148,10 @@ identification of more than one potion. Shops and coins. The remaining
 bosses and floors 6 and down. The workshop meta between runs. Co-op. Portal
 builds. The global leaderboard until the loop is proven.
 
-## What Vesa decides now
+## Decided 2026-10-22
 
-1. The name.
-2. Death ends the run, with a save at the stairs. The alternative is a
-   persistent character with floors that reset, the Diablo shape. The plan
-   assumes the roguelike shape.
-3. Yes or no to building the first slice.
+1. The name is **Hiisi**.
+2. Death is death: dying ends the character for good. The stairs save only
+   so a run can be paused and continued.
+3. The first slice was built the same day and is live at
+   https://vesahyp.github.io/hiisi/.
