@@ -8,7 +8,9 @@
 declare const process: { argv: string[]; exitCode?: number };
 
 import { generateDungeon, distanceField, hitsSolid, moveCircle, T, VISIBLE, FLOOR, WALL, VOID, DOOR_OPEN, type Dungeon } from '../src/game/dungeon';
-import { DT, newRun, startFloor, step, spawn, nextFloor } from '../src/game/sim';
+import { DT, newRun, startFloor, step, spawn, nextFloor, countItems, takeInto, wearFrom, packFrom, equip, stow, swapHands, dropFromPack, drink, takeNear, PACK_SIZE } from '../src/game/sim';
+import { dropItem } from '../src/game/combat';
+import { makePotion, rollCoat } from '../src/game/items';
 import { NO_INPUT, type HeroInput, type SimState } from '../src/game/state';
 import { ENEMIES } from '../src/game/content/enemies';
 import { hitsToNext, skillCap } from '../src/game/skills';
@@ -196,6 +198,91 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   check('the sword skill stops at the floor cap', h.skills.miekka.lvl <= skillCap(s.floor), `miekka ${h.skills.miekka.lvl}, cap ${skillCap(s.floor)}`);
   check('low skill levels take few hits', hitsToNext(0) <= 5 && hitsToNext(10) > hitsToNext(0));
 }
+// ————— nothing vanishes: every path that moves an item keeps the count —————
+{
+  const s = newRun(13);
+  const h = s.hero;
+  arena(s);
+  const under = () => s.drops.find((d) => d.kind === 'item' && Math.hypot(d.x - h.x, d.y - h.y) < 24)!;
+  const lay = (it: ReturnType<typeof rollWeapon>) => {
+    dropItem(s, h.x, h.y, it);
+    step(s, inp({}), DT);
+    return under();
+  };
+  const n0 = countItems(s);
+  let ok = true;
+  const same = (what: string, delta = 0) => {
+    const n = countItems(s);
+    if (n !== n0 + delta) {
+      ok = false;
+      console.log(`  ${what}: ${n0 + delta} expected, ${n} counted`);
+    }
+  };
+  // a worse sword waits; into hand 1 the old sword goes to the pack
+  takeInto(s, h, lay(rollWeapon(s.rng, 'sword', 1, 0)), 0, false);
+  same('take into hand 1', 1);
+  // the same into hand 2: the bow goes to the pack, no bow is lost
+  takeInto(s, h, lay(rollWeapon(s.rng, 'sword', 1, 0)), 1, false);
+  same('take into hand 2 over the bow', 2);
+  check('a swap into the other hand keeps the bow', h.pack.some((x) => x.kind === 'bow'));
+  // the pack to the brim, then a swap puts the old one on the floor and the log says so
+  while (h.pack.length < PACK_SIZE) h.pack.push(rollCoat(s.rng, 1, 0));
+  const nFull = countItems(s);
+  const dr = lay(rollWeapon(s.rng, 'sword', 1, 0));
+  takeInto(s, h, dr, 0, false);
+  check('a swap with a full pack puts the old weapon on the floor and says so', countItems(s) === nFull + 1 && s.drops.some((d) => d.item?.kind === 'sword') && /lattialle/.test(s.log[s.log.length - 1].text), s.log[s.log.length - 1].text);
+  // a coat on, the old to the floor (full pack)
+  const c0 = countItems(s);
+  wearFrom(s, h, lay(rollCoat(s.rng, 1, 2)));
+  check('a coat worn with a full pack keeps the old coat on the floor', countItems(s) === c0 + 1);
+  // the floor sword into the pack: refused when full, nothing lost
+  const p0 = countItems(s);
+  const floorSword = s.drops.find((d) => d.item?.kind === 'sword')!;
+  const took = packFrom(s, h, floorSword);
+  check('a full pack refuses a drop and nothing is lost', !took && countItems(s) === p0);
+  // from the pack: a weapon into a hand, the old into the pack; the hands swapped; a hand stowed; a drop
+  const e0 = countItems(s);
+  const packWeapon = h.pack.find((x) => x.kind === 'sword' || x.kind === 'bow')!;
+  equip(s, h, packWeapon, 1);
+  const hands0 = [h.hands[0]?.id, h.hands[1]?.id];
+  swapHands(s, h);
+  check('the hands change places', h.hands[0]?.id === hands0[1] && h.hands[1]?.id === hands0[0]);
+  dropFromPack(s, h, h.pack[0]);
+  stow(s, h, h.hands[0]!);
+  check('equip, swap, drop and stow keep every item', countItems(s) === e0, `${e0} before, ${countItems(s)} after`);
+  // a potion drunk is the one thing that goes
+  const q0 = countItems(s);
+  h.pack.length = 0;
+  h.pack.push(makePotion('heal', s.potionColors, 2));
+  const q1 = countItems(s);
+  drink(s, h, h.pack[0]);
+  check('a potion drunk is one item fewer, and only that', countItems(s) === q1 - 1 && q0 >= 0);
+  // E takes the thing under the hero into the hand of its kind
+  const t0 = countItems(s);
+  lay(rollWeapon(s.rng, 'bow', 1, 1));
+  takeNear(s, h);
+  check('E takes into the hand of its kind and keeps the count', countItems(s) === t0 + 1 && h.hands.some((x) => x?.kind === 'bow'));
+  check('every item path keeps the count', ok);
+}
+{
+  // a bot run: step by step, the count never falls except by a potion drunk
+  const s = newRun(17);
+  const rng = new Rng(17 ^ 0x5151);
+  let bad = '';
+  while (!s.gameOver && s.floor < 3 && s.time < 400 && !bad) {
+    const before = countItems(s);
+    const floor = s.floor;
+    s.sounds.length = 0;
+    step(s, botInput(s, s.hero, rng, BOT), DT);
+    if (s.hero.points > 0) botSpend(s, s.hero, BOT);
+    if (s.floor !== floor) continue;
+    const drinks = s.sounds.filter((x) => x === 'drink').length;
+    const after = countItems(s);
+    if (after < before - drinks) bad = `at ${s.time.toFixed(2)} s: ${before} before, ${after} after, ${drinks} drunk; log: ${s.log.slice(-2).map((l) => l.text).join(' | ')}`;
+  }
+  check('over two floors of bot play the item count never falls except by drinking', !bad, bad);
+}
+
 // ————— the save —————
 {
   const s = newRun(11);

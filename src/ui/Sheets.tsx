@@ -7,7 +7,8 @@ import { canLearn, canRefund, has, heroStats, learn, refund, setTech } from '../
 import { NODE_BY_ID, NODES, ROWS, isTechnique, type RowId } from '../game/content/tree';
 import { RARITY_COLOR, type Item } from '../game/items';
 import { ItemCard } from './Cards';
-import { drink, dropFromPack, equip, explored, nameOf, PACK_SIZE } from '../game/sim';
+import { drink, dropFromPack, equip, explored, nameOf, PACK_SIZE, stow, swapHands } from '../game/sim';
+import { Choice } from './Compare';
 import { fmtTime } from '../records';
 import { audio } from '../audio';
 
@@ -301,7 +302,7 @@ function Tree({ s, onChange }: { s: SimState; onChange: () => void }) {
 
 function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
   const h = s.hero;
-  const [sel, setSel] = useState<Item | null>(h.pack[0] ?? h.hands[h.active]);
+  const [sel, setSel] = useState<Item | null>(h.hands[h.active] ?? h.pack[0] ?? null);
   const cell = (it: Item | null, label: string, hand?: number) => (
     <button key={it ? it.id : label} className={`cell ${it ? `b${it.rarity}` : 'empty'} ${it && sel === it ? 'sel' : ''}`} onClick={() => it && setSel(it)} disabled={!it}>
       {hand !== undefined && it && <span className={`hand ${h.active === hand ? 'on' : ''}`}>{hand + 1}</span>}
@@ -311,18 +312,20 @@ function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
       {it && it.count > 1 && <span className="n">{it.count}</span>}
     </button>
   );
-  const vs = sel ? (sel.kind === 'coat' ? h.coat : sel.kind === 'potion' ? null : (h.hands.find((x) => x?.kind === sel.kind && x !== sel) ?? null)) : null;
   const inHand = sel ? h.hands.indexOf(sel) : -1;
+  const worn = sel !== null && h.coat === sel;
+  const inPack = sel !== null && h.pack.includes(sel);
+  const room = h.pack.length < PACK_SIZE;
   const act = (f: () => void) => {
     f();
     onChange();
-    setSel((x) => (x && (h.pack.includes(x) || h.hands.includes(x) || h.coat === x) ? x : (h.pack[0] ?? h.hands[h.active])));
+    setSel((x) => (x && (h.pack.includes(x) || h.hands.includes(x) || h.coat === x) ? x : (h.hands[h.active] ?? h.pack[0] ?? null)));
   };
   return (
     <div className="cols">
       <div className="panel">
         <div className="h">
-          <span>{tr('YLLÄ JA KÄDESSÄ', 'WORN AND IN HAND')}</span>
+          <span>{tr('KÄDESSÄ JA YLLÄ', 'IN HAND AND WORN')}</span>
           <span>{tr('napauta: kortti', 'tap: the card')}</span>
         </div>
         <div className="worn">
@@ -330,6 +333,9 @@ function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
           {cell(h.hands[1], tr('käsi 2', 'hand 2'), 1)}
           {cell(h.coat, tr('takki', 'coat'))}
         </div>
+        <button className="btn ghost tiny" style={{ marginTop: 6 }} onClick={() => act(() => swapHands(s, h))}>
+          {tr('Vaihda kädet keskenään', 'Swap the hands')}
+        </button>
         <div className="h" style={{ marginTop: 10 }}>
           <span>
             {tr('REPPU', 'PACK')} {h.pack.length} / {PACK_SIZE}
@@ -345,38 +351,39 @@ function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
       <div className="panel">
         {sel ? (
           <>
-            <ItemCard it={sel} vs={vs} h={h} />
+            <ItemCard it={sel} h={h} />
+            {inPack && (sel.kind === 'sword' || sel.kind === 'bow') && (
+              <div className="choices">
+                {([0, 1] as const).map((slot) => {
+                  const held = h.hands[slot];
+                  return <Choice key={slot} title={tr(`Käsi ${slot + 1}`, `Hand ${slot + 1}`)} held={held} it={sel} h={h} action={held ? tr(`Käteen ${slot + 1}: ${t(held.name)} reppuun`, `Into hand ${slot + 1}: ${t(held.name)} to the pack`) : tr(`Käteen ${slot + 1}`, `Into hand ${slot + 1}`)} onPick={() => act(() => equip(s, h, sel, slot))} />;
+                })}
+              </div>
+            )}
+            {inPack && sel.kind === 'coat' && (
+              <div className="choices">
+                <Choice title={tr('Ylle', 'Worn')} held={h.coat} it={sel} h={h} action={h.coat ? tr(`Pue: ${t(h.coat.name)} reppuun`, `Wear: ${t(h.coat.name)} to the pack`) : tr('Pue', 'Wear')} onPick={() => act(() => equip(s, h, sel, 0))} />
+              </div>
+            )}
             <div className="acts">
-              {(sel.kind === 'sword' || sel.kind === 'bow') && inHand < 0 && (
-                <>
-                  <button className="btn primary" onClick={() => act(() => equip(s, h, sel, 0))}>
-                    {tr('Käteen 1', 'Hand 1')}
-                  </button>
-                  <button className="btn" onClick={() => act(() => equip(s, h, sel, 1))}>
-                    {tr('Käteen 2', 'Hand 2')}
-                  </button>
-                </>
-              )}
-              {sel.kind === 'coat' && h.coat !== sel && (
-                <button className="btn primary" onClick={() => act(() => equip(s, h, sel, 0))}>
-                  {tr('Pue', 'Wear')}
-                </button>
-              )}
-              {sel.kind === 'potion' && (
+              {inPack && sel.kind === 'potion' && (
                 <button className="btn primary" onClick={() => act(() => drink(s, h, sel))}>
                   {tr('Juo', 'Drink')}
                 </button>
               )}
+              {(inHand >= 0 || worn) && (
+                <button className="btn" disabled={!room} onClick={() => act(() => stow(s, h, sel))}>
+                  {room ? (worn ? tr('Riisu reppuun', 'Take off, to the pack') : tr('Reppuun', 'To the pack')) : tr('Reppu on täynnä', 'The pack is full')}
+                </button>
+              )}
               <button className="btn ghost" onClick={() => act(() => dropFromPack(s, h, sel))}>
-                {tr('Pudota', 'Drop')}
+                {tr('Pudota lattialle', 'Drop on the floor')}
               </button>
             </div>
             <div className="note">
               {sel.kind === 'potion'
                 ? tr('Tuntematon juoma (?) tunnistetaan juomalla: se on riski, jonka voi ottaa kun elämä on täynnä. Parannusjuoma on aina punainen. Nappi 🧪 juo parannusjuoman.', 'An unknown potion (?) is identified by drinking: a risk to take with full health. The healing potion is always red. The 🧪 button drinks a healing potion.')
-                : sel.kind === 'coat'
-                  ? tr('Takki ottaa panssarinsa verran pois joka osumasta.', 'A coat takes its armour off every hit.')
-                  : tr('Käteen ottaminen vaihtaa tyylin. Aseen taito nousee osumista. Kädessä olevan aseen vaihto kesken taistelun: ⇄-nappi.', 'A weapon in hand sets the style. Its skill rises from hits. Swap hands mid-fight with the ⇄ button.')}
+                : tr('Mikään ei katoa: vaihdettu esine menee reppuun. Vihreä on parempi kuin nyt kädessä, punainen huonompi.', 'Nothing is lost: a swapped item goes to the pack. Green is better than what is in hand now, red worse.')}
             </div>
           </>
         ) : (

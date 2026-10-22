@@ -25,6 +25,29 @@ stops for it (`autoTake` in `src/game/sim.ts`):
 What makes this safe to automate: the replaced thing is never destroyed,
 and a wrong automatic choice is undone in the pack sheet in two taps.
 
+## Nothing vanishes
+
+Every path that moves an item keeps the count (`countItems` in
+`sim.ts`): a thing taken off the hero goes into the pack, or onto the
+floor where the new one lay when the pack is full, and the log line says
+which ("Käsi 2: Hiidenmiekka. Ruosteinen jousi reppuun."). Vesa's second
+playtest read a swap into the wrong hand as the old weapon destroyed; it
+had gone to the pack in silence. `sim-check` now runs every path (take
+into either hand, a full pack, a coat, the pack, equip, the hands swapped,
+stow, drop, drink) and asserts the count, and watches two floors of bot
+play step by step for a count that falls without a potion drunk.
+
+## The comparison
+
+The card from the chip shows the new item, then one choice per place it
+could go: hand 1 and hand 2 for a weapon, worn for a coat. Each choice
+names what is there now, lists the numbers that would change with the
+new value and the old beside it (green better, red worse, an affix lost
+or gained as its own line), and its button says in words what the swap
+does: "Vaihda käteen 2: Ruosteinen jousi reppuun". The pack sheet uses
+the same choice panels, so a pack weapon into a hand is one tap after
+the tap that selects it, and the hands change places with one button.
+
 ## The chip
 
 What the rule leaves lying under the hero shows as one line in the HUD's

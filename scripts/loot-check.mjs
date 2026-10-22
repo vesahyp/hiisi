@@ -68,9 +68,35 @@ for (const [orient, viewport] of [['portrait', devices['iPhone 15'].viewport], [
     await page.locator('.lootchip').tap();
     await page.waitForSelector('.overlay.loot', { timeout: 3000 });
     await page.screenshot({ path: `${dir}/${orient}-card.png` });
-    const cards = await page.locator('.overlay.loot .icard').count();
-    check(cards === 2, `${orient}: the comparison shows the drop beside the hand (${cards} cards)`);
-    await page.getByRole('button', { name: 'Jätä' }).tap();
+    const choices = await page.locator('.overlay.loot .choice').count();
+    const titles = await page.locator('.overlay.loot .choice .ctitle').allTextContents();
+    check(choices === 2 && /Käsi 1/.test(titles[0]) && /Käsi 2/.test(titles[1]) && titles.every((x) => /·/.test(x)), `${orient}: the comparison shows both hands with what each holds (${titles.join(' / ')})`);
+    const buttons = await page.locator('.overlay.loot .choice .btn').allTextContents();
+    check(buttons.every((b) => /Vaihda käteen \d: .+ reppuun/.test(b)), `${orient}: each choice says what it does in words ("${buttons[1]}")`);
+    // the wrong hand: the bow goes to the pack and the log says so; nothing is lost
+    const countBefore = await page.evaluate(() => window.__count());
+    const bowBefore = await page.evaluate(() => window.__sim.hero.hands[1].id);
+    await page.locator('.overlay.loot .choice .btn').nth(1).tap();
+    await page.waitForSelector('.overlay.loot', { state: 'detached', timeout: 3000 });
+    const swapped = await page.evaluate(() => ({ count: window.__count(), hand2: window.__sim.hero.hands[1].kind, packHasBow: window.__sim.hero.pack.some((x) => x.id === window.__sim.hero.hands[1].id) || window.__sim.hero.pack.some((x) => x.kind === 'bow'), log: window.__sim.log[window.__sim.log.length - 1].text }));
+    check(swapped.count === countBefore && swapped.hand2 === 'sword' && swapped.packHasBow && /reppuun/.test(swapped.log), `${orient}: a swap into the other hand keeps the bow in the pack and says so ("${swapped.log}")`);
+    void bowBefore;
+    // the pack sheet swaps it back in one tap
+    await page.keyboard.press('i');
+    await page.waitForSelector('.overlay.sheet', { timeout: 3000 });
+    await page.locator('.pack .cell').filter({ hasText: /jousi/i }).first().tap();
+    await page.locator('.choice .btn').nth(1).tap();
+    const back = await page.evaluate(() => ({ hand2: window.__sim.hero.hands[1].kind, count: window.__count() }));
+    check(back.hand2 === 'bow' && back.count === countBefore, `${orient}: the pack sheet puts the bow back in hand 2 in one tap`);
+    await page.screenshot({ path: `${dir}/${orient}-pack.png` });
+    await page.keyboard.press('i');
+    await page.waitForSelector('.overlay.sheet', { state: 'detached', timeout: 3000 });
+    // a second drop, left on the floor
+    await page.evaluate(() => window.__drop('sword', 0));
+    await page.waitForSelector('.lootchip', { timeout: 5000 });
+    await page.locator('.lootchip').tap();
+    await page.waitForSelector('.overlay.loot', { timeout: 3000 });
+    await page.getByRole('button', { name: 'Jätä lattialle' }).tap();
     await page.waitForSelector('.overlay.loot', { state: 'detached', timeout: 3000 });
     // a plainly better weapon is taken on the walk, with a log line
     const handBefore = await page.evaluate(() => window.__sim.hero.hands[0].id);

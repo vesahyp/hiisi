@@ -365,6 +365,31 @@ export function autoTake(s: SimState, h: Hero, dr: SimState['drops'][number]): b
   return false;
 }
 
+/** Where a thing taken off the hero goes: the pack when there is room, else the floor. */
+export type Where = 'pack' | 'floor';
+export function whereOldGoes(h: Hero): Where {
+  return h.pack.length < PACK_SIZE ? 'pack' : 'floor';
+}
+export function whereWord(w: Where): string {
+  return w === 'pack' ? tr('reppuun', 'to the pack') : tr('lattialle (reppu täynnä)', 'to the floor (pack full)');
+}
+
+/** The thing taken off the hero: into the pack, or onto the floor at (x, y). Nothing is ever destroyed. */
+function placeOld(s: SimState, h: Hero, old: Item | null, x: number, y: number): Where | null {
+  if (!old) return null;
+  if (h.pack.length < PACK_SIZE) {
+    h.pack.push(old);
+    return 'pack';
+  }
+  dropItem(s, x, y, old);
+  return 'floor';
+}
+
+function sayMove(s: SimState, head: string, old: Item | null, where: Where | null, color: string): void {
+  const tail = old && where ? ` ${t(old.name)} ${whereWord(where)}.` : '';
+  say(s, `${head}${tail}`, color);
+}
+
 /** The coat from a drop onto the hero; the old one into the pack or onto the floor. */
 export function wearFrom(s: SimState, h: Hero, dr: SimState['drops'][number]): void {
   const it = dr.item;
@@ -372,12 +397,11 @@ export function wearFrom(s: SimState, h: Hero, dr: SimState['drops'][number]): v
   const old = h.coat;
   h.coat = it;
   dr.item = null;
-  if (old && h.pack.length < PACK_SIZE) h.pack.push(old);
-  else if (old) dr.item = old;
+  const where = placeOld(s, h, old, dr.x, dr.y);
   s.run.items++;
   s.run.bestRarity = Math.max(s.run.bestRarity, it.rarity);
   s.sounds.push('take');
-  say(s, tr(`Ylle: ${t(it.name)}.`, `You wear: ${t(it.name)}.`), it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
+  sayMove(s, tr(`Ylle: ${t(it.name)}.`, `Worn: ${t(it.name)}.`), old, where, it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
   s.drops = s.drops.filter((x) => x.kind === 'chest' || x.item);
 }
 
@@ -389,8 +413,7 @@ export function takeInto(s: SimState, h: Hero, dr: SimState['drops'][number], sl
   h.hands[slot] = it;
   if (!auto) h.active = slot;
   dr.item = null;
-  if (old && h.pack.length < PACK_SIZE) h.pack.push(old);
-  else if (old) dr.item = old;
+  const where = placeOld(s, h, old, dr.x, dr.y);
   if (slot === h.active) {
     h.swing = null;
     h.draw = 0;
@@ -399,8 +422,8 @@ export function takeInto(s: SimState, h: Hero, dr: SimState['drops'][number], sl
   s.run.items++;
   s.run.bestRarity = Math.max(s.run.bestRarity, it.rarity);
   s.sounds.push('take');
-  const where = tr(`käsi ${slot + 1}`, `hand ${slot + 1}`);
-  say(s, auto ? tr(`Parempi: ${t(it.name)} (${where}).`, `Better: ${t(it.name)} (${where}).`) : tr(`Käteen ${slot + 1}: ${t(it.name)}.`, `Hand ${slot + 1}: ${t(it.name)}.`), it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
+  const head = auto ? tr(`Parempi, käsi ${slot + 1}: ${t(it.name)}.`, `Better, hand ${slot + 1}: ${t(it.name)}.`) : tr(`Käsi ${slot + 1}: ${t(it.name)}.`, `Hand ${slot + 1}: ${t(it.name)}.`);
+  sayMove(s, head, old, where, it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
   s.drops = s.drops.filter((x) => x.kind === 'chest' || x.item);
 }
 
@@ -414,7 +437,28 @@ export function packFrom(s: SimState, h: Hero, dr: SimState['drops'][number]): b
   return true;
 }
 
+/** The two hands change places; the active one stays the active weapon. */
+export function swapHands(s: SimState, h: Hero): void {
+  h.hands = [h.hands[1], h.hands[0]];
+  h.active = 1 - h.active;
+  s.sounds.push('swap');
+  say(s, tr('Kädet vaihtoivat paikkaa.', 'The hands changed places.'), '#b8c8a8');
+}
 
+/** A hand or the coat into the pack. False when the pack is full. */
+export function stow(s: SimState, h: Hero, it: Item): boolean {
+  if (h.pack.length >= PACK_SIZE) {
+    say(s, tr('Reppu on täynnä.', 'The pack is full.'), '#ff8a70');
+    return false;
+  }
+  if (h.coat === it) h.coat = null;
+  for (const i of [0, 1] as const) if (h.hands[i] === it) h.hands[i] = null;
+  if (!h.hands[h.active] && h.hands[1 - h.active]) h.active = 1 - h.active;
+  h.pack.push(it);
+  s.sounds.push('take');
+  say(s, tr(`${t(it.name)} reppuun.`, `${t(it.name)} to the pack.`), '#b8c8a8');
+  return true;
+}
 
 /** The potion button: the first healing potion in the pack. */
 export function drinkHeal(s: SimState, h: Hero): void {
@@ -456,12 +500,14 @@ export function drink(s: SimState, h: Hero, p: Item): void {
 
 /** From the pack screen: a weapon into a hand, a coat on, an item onto the floor. */
 export function equip(s: SimState, h: Hero, it: Item, slot: 0 | 1): void {
+  if (!h.pack.includes(it)) return;
   if (it.kind === 'coat') {
     const old = h.coat;
     h.coat = it;
     h.pack = h.pack.filter((x) => x !== it);
     if (old) h.pack.push(old);
     s.sounds.push('take');
+    sayMove(s, tr(`Ylle: ${t(it.name)}.`, `Worn: ${t(it.name)}.`), old, old ? 'pack' : null, '#b8c8a8');
     return;
   }
   if (it.kind !== 'sword' && it.kind !== 'bow') return;
@@ -474,6 +520,7 @@ export function equip(s: SimState, h: Hero, it: Item, slot: 0 | 1): void {
   h.draw = 0;
   h.drawing = false;
   s.sounds.push('swap');
+  sayMove(s, tr(`Käsi ${slot + 1}: ${t(it.name)}.`, `Hand ${slot + 1}: ${t(it.name)}.`), old, old ? 'pack' : null, '#b8c8a8');
 }
 
 export function dropFromPack(s: SimState, h: Hero, it: Item): void {
@@ -482,6 +529,19 @@ export function dropFromPack(s: SimState, h: Hero, it: Item): void {
   for (const i of [0, 1] as const) if (h.hands[i] === it) h.hands[i] = null;
   if (!h.hands[h.active] && h.hands[1 - h.active]) h.active = 1 - h.active;
   dropItem(s, h.x + s.rng.range(-10, 10), h.y + 14, it);
+  say(s, tr(`${t(it.name)} lattialle.`, `${t(it.name)} onto the floor.`), '#b8c8a8');
+}
+
+/** Every item the run holds: in the hands, worn, in the pack, on the floor and in chests. For the checks. */
+export function countItems(s: SimState): number {
+  const h = s.hero;
+  let n = 0;
+  for (const it of [...h.hands, h.coat, ...h.pack]) if (it) n += it.count;
+  for (const dr of s.drops) {
+    if (dr.item) n += dr.item.count;
+    for (const it of dr.loot) n += it.count;
+  }
+  return n;
 }
 
 /** The whole floor, for the map screen: rooms explored of all. */

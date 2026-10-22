@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { DT, step, takeInto, wearFrom, packFrom, startFloor } from '../game/sim';
+import { DT, step, takeInto, wearFrom, packFrom, startFloor, whereOldGoes, whereWord, PACK_SIZE, countItems } from '../game/sim';
+import { Choice } from './Compare';
 import { generateDungeon } from '../game/dungeon';
 import type { SimState } from '../game/state';
 import { Renderer } from '../render/renderer';
@@ -96,7 +97,8 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
       const d = s.dungeon;
       for (let i = 0; i < d.seen.length; i++) if (d.tiles[i] !== 0 && d.seen[i] === 0) d.seen[i] = 1;
     };
-    // For scripts/loot-check.mjs: lay a rolled item under the hero.
+    // For scripts/loot-check.mjs: every item the run holds, and a rolled item under the hero.
+    (window as unknown as { __count: () => number }).__count = () => countItems(s);
     (window as unknown as { __drop: (kind: 'sword' | 'bow' | 'coat' | 'potion', rarity?: number) => void }).__drop = (kind, rarity = 0) => {
       const h = s.hero;
       const it = kind === 'coat' ? rollCoat(s.rng, s.floor, rarity) : kind === 'potion' ? makePotion('heal', s.potionColors) : rollWeapon(s.rng, kind, s.floor, rarity);
@@ -394,44 +396,32 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         const dr = s.drops.find((x) => x.id === overlay.id);
         const it = dr?.item;
         if (!dr || !it) return null;
-        const vs = it.kind === 'coat' ? h.coat : (h.hands.find((x) => x?.kind === it.kind) ?? null);
         const done = () => setOverlay({ kind: 'none' });
+        const dest = whereWord(whereOldGoes(h));
+        const room = h.pack.length < PACK_SIZE;
         return (
           <div className="overlay loot" data-ui>
             <h2>{tr('Lattialla', 'On the floor')}</h2>
-            <div className="lootcard">
-              <ItemCard it={it} vs={vs} h={h} />
-              {vs && (
-                <div className="lootvs">
-                  <div className="small">{it.kind === 'coat' ? tr('Ylläsi', 'Worn') : tr('Kädessä', 'In hand')}</div>
-                  <ItemCard it={vs} h={h} compact />
-                </div>
-              )}
+            <div className="lootbody">
+              <ItemCard it={it} h={h} />
+              <div className="choices">
+                {(it.kind === 'sword' || it.kind === 'bow') &&
+                  ([0, 1] as const).map((slot) => {
+                    const held = h.hands[slot];
+                    return <Choice key={slot} title={tr(`Käsi ${slot + 1}`, `Hand ${slot + 1}`)} held={held} it={it} h={h} action={held ? tr(`Vaihda käteen ${slot + 1}: ${t(held.name)} ${dest}`, `Swap into hand ${slot + 1}: ${t(held.name)} ${dest}`) : tr(`Käteen ${slot + 1}`, `Into hand ${slot + 1}`)} onPick={() => { takeInto(s, h, dr, slot, false); done(); }} />;
+                  })}
+                {it.kind === 'coat' && <Choice title={tr('Ylle', 'Worn')} held={h.coat} it={it} h={h} action={h.coat ? tr(`Pue: ${t(h.coat.name)} ${dest}`, `Wear: ${t(h.coat.name)} ${dest}`) : tr('Pue', 'Wear')} onPick={() => { wearFrom(s, h, dr); done(); }} />}
+              </div>
             </div>
             <div className="row">
-              {(it.kind === 'sword' || it.kind === 'bow') && (
-                <>
-                  <button className="btn primary" onClick={() => { takeInto(s, h, dr, 0, false); done(); }}>
-                    {tr('Käteen 1', 'Hand 1')}
-                  </button>
-                  <button className="btn" onClick={() => { takeInto(s, h, dr, 1, false); done(); }}>
-                    {tr('Käteen 2', 'Hand 2')}
-                  </button>
-                </>
-              )}
-              {it.kind === 'coat' && (
-                <button className="btn primary" onClick={() => { wearFrom(s, h, dr); done(); }}>
-                  {tr('Pue', 'Wear')}
-                </button>
-              )}
-              <button className="btn" onClick={() => { packFrom(s, h, dr); done(); }}>
-                {tr('Reppuun', 'To the pack')}
+              <button className="btn" disabled={!room} onClick={() => { packFrom(s, h, dr); done(); }}>
+                {room ? tr('Reppuun', 'To the pack') : tr('Reppu on täynnä', 'The pack is full')}
               </button>
               <button className="btn ghost" onClick={done}>
-                {tr('Jätä', 'Leave it')}
+                {tr('Jätä lattialle', 'Leave it on the floor')}
               </button>
             </div>
-            <p className="small">{tr('Selvästi paremmat aseet ja takit sekä juomat tulevat mukaan kävellen. Tämä jäi, koska se ei ole parempi.', 'Plainly better weapons and coats, and every potion, are taken on the walk. This one waited because it is not better.')}</p>
+            <p className="small">{tr('Mikään ei katoa: vaihdettu ase menee reppuun, tai lattialle jos reppu on täynnä. Reppu-välilehdeltä voi vaihtaa takaisin.', 'Nothing is lost: a swapped weapon goes to the pack, or onto the floor when the pack is full. The pack tab swaps it back.')}</p>
           </div>
         );
       })()}

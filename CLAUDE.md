@@ -69,6 +69,7 @@ src/
     Sheets.tsx          the character, the tree, the pack, the map
     Screens.tsx         title, death, records, the guide
     Cards.tsx           the item card
+    Compare.tsx         a choice: what is in that place now, the differences, the button that says what it does
   ../docs/loot-ui.md    the walk-over rule and the chip, written for Höyry too
     Guide.tsx           how to play, in words
   audio.ts              Web Audio synth, from Höyry, with Hiisi's sound names
@@ -102,6 +103,10 @@ public/mockups/         the design mockups and their shooter
    `has(hero, id)` where the rule lives. A new affix is an entry in `items.ts`.
 5. **Every hit goes through `hurtEnemy` or `hurtHero`** (`combat.ts`). They
    own damage, knockback, kills, experience, skill training and drops.
+   **Nothing vanishes:** every path that moves an item (`sim.ts`: takeInto,
+   wearFrom, packFrom, equip, stow, swapHands, dropFromPack) keeps
+   `countItems`, and the log says where the old thing went. `sim-check`
+   asserts it path by path and over two floors of bot play.
 6. **Every enemy attack is slow enough to see.** A windup shows before a
    strike, the bear's charge draws its lane, enemy arrows fly slowly. The
    proof is `npm run gauntlet`: the human-limited bot must reach floor 3
