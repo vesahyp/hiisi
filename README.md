@@ -47,6 +47,18 @@ Esc on tauko.
   Laukausten ja lyöntien väliin jää aina lyhyt tauko, joten naputtelu ei
   auta. Jousen ja miekan taito sekä jäntevä jousi tai nopea miekka
   lyhentävät aikaa täyteen lataukseen; katto ei nouse.
+- **Vihollisilla on aivot ja jokaisella oma oikku.** Kaikki pakenevat kun
+  elämä on vähissä (juomapullon luo, jos sellainen on lattialla, ja juovat
+  sen), nappaavat lattialta aseen ja lyövät sillä, huutavat lähellä olevat
+  kaverit apuun kun huomaavat sinut, ja luopuvat jahdista jos kadotat ne
+  pitkäksi aikaa. Mitä ne kantavat, sen ne pudottavat kuollessaan. Oikut:
+  rotta on pelkuri ja hyökkää vain laumassa; hiisi raivostuu kun sattuu;
+  jousihiisi pitää etäisyyden; luuranko romahtaa luukasaksi ja nousee
+  selkäsi takana; varas vie osuessaan esineen repustasi ja juoksee; ansastaja
+  virittää punaisia ansoja; kultahiisi kantaa aarretta ja pakenee heti;
+  kivenheittäjä heittää kiviä, joiden putoamispaikan näet; karhu nukkuu ja
+  herää äkäisenä. Jokainen oikku näkyy ruudulla: merkki pään päällä, väri
+  tai lokirivi.
 - **Jokainen vihollisen isku näkyy ennen kuin se osuu**: punainen kaari
   ennen lyöntiä, viiva ennen nuolta, kaista ennen karhun rynnäkköä.
 - **Vauhti kasvaa kierroksen mittaan.** Alussa kuljet rauhallisesti.

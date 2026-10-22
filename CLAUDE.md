@@ -48,8 +48,10 @@ src/
     attacks.ts          the hero's hands: the melee families' shapes and
                           effects on the release, the guard, the bow's draw
                           and arrows, the techniques, projectiles
-    ai.ts               enemy behaviour: sleep, idle, chase, windup, strike,
-                          the bear's charge; traps
+    ai.ts               enemy behaviour: the shared brains (flee when low, drink
+                          a potion, grab a weapon, call friends, give up a lost
+                          chase) and a quirk per type (content/enemies.ts);
+                          traps of both sides
     combat.ts           hurtEnemy, hurtHero, kills, experience, drops
     hero.ts             the hero's numbers, skills by use, levels, the tree
                           (learn, refund, the buttons)
@@ -60,7 +62,8 @@ src/
     content/
       weapons.ts        the melee families: sword, axe, mace, spear, dagger,
                           flail, scythe, anchor; shape, effect, rhythm, names
-      enemies.ts        the cast: numbers, windups, reach, sight
+      enemies.ts        the cast: numbers, windups, reach, sight, and each
+                          one's quirk with its line for the player
       tree.ts           every node: row, gate, chain, what it does
   render/
     renderer.ts         3/4 view, row-sorted walls, the dark, telegraphs,

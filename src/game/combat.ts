@@ -28,6 +28,21 @@ export function hurtEnemy(s: SimState, e: Enemy, dmg: number, src: HitSource): v
   if (e.dead) return;
   if (e.armorBreak > 0) dmg = Math.round(dmg * 1.33);
   e.hp -= dmg;
+  // a hit wakes the quirks that watch health: the rage, the collapse
+  if (e.def.quirk === 'rage' && e.hp > 0 && e.hp < e.maxHp * 0.5 && e.rage <= 0 && !e.quirkUsed) {
+    e.quirkUsed = true;
+    e.rage = 1e9;
+    say(s, tr(`${t(e.def.name)} raivostuu!`, `The ${t(e.def.name).toLowerCase()} rages!`), '#ff6a5a');
+    s.texts.push({ x: e.x, y: e.y - e.r - 18, text: tr('RAIVO', 'RAGE'), color: '#ff5a4a', life: 1.2, size: 13 });
+    s.sounds.push('roar');
+  }
+  if (e.def.quirk === 'playdead' && e.hp > 0 && e.hp < e.maxHp * 0.35 && !e.quirkUsed && e.mode !== 'playdead') {
+    e.quirkUsed = true;
+    e.mode = 'playdead';
+    e.t = s.rng.range(2.5, 4);
+    say(s, tr(`${t(e.def.name)} romahtaa luukasaksi...`, `The ${t(e.def.name).toLowerCase()} collapses into a bone pile...`), '#b8c8a8');
+    s.sounds.push('crate');
+  }
   e.hurtFlash = 0.15;
   wake(s, e, true);
   if (src.knock > 0 && !e.def.boss) {
@@ -71,6 +86,12 @@ function kill(s: SimState, e: Enemy, src: HitSource): void {
     return;
   }
   void src;
+  if (e.carry) {
+    // what it carried lies where it fell: the stolen thing, the grabbed weapon, the hoard
+    dropItem(s, e.x, e.y, e.carry);
+    say(s, tr(`${t(e.def.name)} pudottaa: ${t(e.carry.name)}.`, `The ${t(e.def.name).toLowerCase()} drops: ${t(e.carry.name)}.`), e.carry.rarity >= 2 ? '#c070ff' : '#ffd870');
+    e.carry = null;
+  }
   if (s.rng.chance(0.32)) dropItem(s, e.x, e.y, rollDrop(s.rng, s.floor, s.potionColors));
 }
 
@@ -125,9 +146,28 @@ export function wake(s: SimState, e: Enemy, hurt = false): void {
       if (o.mode === 'sleep') o.mode = 'idle';
     }
     if (e.def.boss) {
-      s.banner = { text: t(e.def.name), sub: tr('Väistä rynnäkkö sivulle', 'Sidestep the charge'), life: 2.6, color: '#ff8a70' };
+      s.banner = { text: t(e.def.name), sub: tr('Äkäinen: väistä rynnäkkö sivulle', 'Grumpy: sidestep the charge'), life: 2.6, color: '#ff8a70' };
       s.sounds.push('boss');
-    } else if (!hurt) say(s, tr(`${t(e.def.name)} huomaa sinut!`, `The ${t(e.def.name).toLowerCase()} notices you!`), '#ff8a70');
+      // woken grumpy: fast and red for the first seconds
+      e.rage = 5;
+      s.texts.push({ x: e.x, y: e.y - e.r - 22, text: tr('ÄRRR', 'GRRR'), color: '#ff5a4a', life: 1.5, size: 16 });
+    } else if (!hurt) {
+      say(s, tr(`${t(e.def.name)} huomaa sinut!`, `The ${t(e.def.name).toLowerCase()} notices you!`), '#ff8a70');
+      // it calls: friends within six tiles come, in sight or not
+      let called = 0;
+      for (const o of s.enemies) {
+        if (o === e || o.dead || o.aware || o.def.boss || Math.hypot(o.x - e.x, o.y - e.y) > 6 * T) continue;
+        o.aware = true;
+        o.alertT = 1.2;
+        if (o.mode === 'sleep') o.mode = 'idle';
+        called++;
+      }
+      if (called) {
+        s.texts.push({ x: e.x, y: e.y - e.r - 20, text: '!!', color: '#ff8a70', life: 1, size: 15 });
+        say(s, tr(`${t(e.def.name)} huutaa apua: ${called} tulee.`, `The ${t(e.def.name).toLowerCase()} calls for help: ${called} come.`), '#ff8a70');
+        s.sounds.push('call');
+      }
+    }
   }
   void s;
 }

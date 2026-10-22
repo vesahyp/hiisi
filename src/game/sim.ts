@@ -5,7 +5,8 @@ import { heroAttack, updateDash, updateProjectiles, updateSwing } from './attack
 import { enemyStep, separate, springTraps } from './ai';
 import { dropItem } from './combat';
 import { has, held, heroStats } from './hero';
-import { isMelee, makePotion, POTION_COLORS, resetItemIds, rollDrop, rollWeapon, weaponScore, type Item, type PotionKind, POTION_NAME, POTION_COLOR_NAME } from './items';
+import { FAMILIES } from './content/weapons';
+import { isMelee, makePotion, rollCoat, POTION_COLORS, resetItemIds, rollDrop, rollWeapon, weaponScore, type Item, type PotionKind, POTION_NAME, POTION_COLOR_NAME } from './items';
 
 /** A thing a hand can hold. */
 export const isWeapon = (it: Item): boolean => isMelee(it.kind) || it.kind === 'bow';
@@ -131,7 +132,16 @@ export function spawn(s: SimState, defId: string, x: number, y: number, room: nu
     swipes: 0,
     bleed: { t: 0, dps: 0 },
     armorBreak: 0,
+    carry: null,
+    rage: 0,
+    lostT: 0,
+    fleeT: 0,
+    quirkUsed: false,
+    wantDrop: null,
+    quirkT: s.rng.range(1, 3),
   };
+  // the hoarder's treasure: a rare weapon or coat
+  if (def.quirk === 'hoarder') e.carry = s.rng.chance(0.6) ? rollWeapon(s.rng, s.rng.weighted(FAMILIES, (f) => f.weight).kind, s.floor, 2 + (s.rng.chance(0.3) ? 1 : 0)) : rollCoat(s.rng, s.floor, 2);
   s.enemies.push(e);
   return e;
 }
@@ -191,7 +201,8 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
   // movement
   const st = heroStats(h);
   h.hp = Math.min(h.hp, st.maxHp);
-  const m = Math.hypot(inp.mx, inp.my);
+  h.stuck = Math.max(0, h.stuck - dt);
+  const m = h.stuck > 0 ? 0 : Math.hypot(inp.mx, inp.my);
   h.moving = m > 0.05 && !h.dash;
   if (h.dash) {
     moveCircle(d, h, h.r, h.dash.dx * 460 * dt, h.dash.dy * 460 * dt);
@@ -559,6 +570,7 @@ export function countItems(s: SimState): number {
     if (dr.item) n += dr.item.count;
     for (const it of dr.loot) n += it.count;
   }
+  for (const e of s.enemies) if (e.carry) n += e.carry.count;
   return n;
 }
 

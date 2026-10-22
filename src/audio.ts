@@ -121,7 +121,7 @@ class Audio {
     if (!this.ctx || this.muted) return;
     const r = Math.random;
     // Hiisi's names onto the voices below
-    const alias: Record<string, string> = { drawstep: 'tap', hitbig: 'crate', cleave: 'shot_scatter', maul: 'stomp', thrust: 'shot_rifle', stab: 'clink', whirl: 'shot_saw', reap: 'shot_lance', chain: 'tick', swing: 'shot_lance', bowshot: 'shot_revolver', bowfull: 'shot_rifle', drawfull: 'tick', thud: 'clink', block: 'block', parry: 'zap', dash: 'charge', trap: 'crate', skillup: 'coin', levelup: 'clear', learn: 'cog', door: 'take', chest: 'epic', rare: 'epic', epic: 'legend', drink: 'steam', stairs: 'lift', floor: 'floor', boss: 'boss', bosskill: 'bosskill', stomp: 'stomp', charge: 'charge' };
+    const alias: Record<string, string> = { roar: 'boss', chitter: 'tick', call: 'cuckoo', drawstep: 'tap', hitbig: 'crate', cleave: 'shot_scatter', maul: 'stomp', thrust: 'shot_rifle', stab: 'clink', whirl: 'shot_saw', reap: 'shot_lance', chain: 'tick', swing: 'shot_lance', bowshot: 'shot_revolver', bowfull: 'shot_rifle', drawfull: 'tick', thud: 'clink', block: 'block', parry: 'zap', dash: 'charge', trap: 'crate', skillup: 'coin', levelup: 'clear', learn: 'cog', door: 'take', chest: 'epic', rare: 'epic', epic: 'legend', drink: 'steam', stairs: 'lift', floor: 'floor', boss: 'boss', bosskill: 'bosskill', stomp: 'stomp', charge: 'charge' };
     name = alias[name] ?? name;
     switch (name) {
       case 'shot_revolver':

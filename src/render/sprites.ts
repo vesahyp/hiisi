@@ -116,6 +116,10 @@ const ENEMY_LOOK: Record<string, { body: string; r: number; eye: string }> = {
   rotta: { body: '#6a5a4a', r: 9, eye: '#ff6a4a' },
   hiisi: { body: '#4f8a3a', r: 11, eye: '#ffe060' },
   jousihiisi: { body: '#3f7a4a', r: 11, eye: '#ffe060' },
+  varas: { body: '#5a3a6a', r: 10, eye: '#ffe060' },
+  ansastaja: { body: '#6a5a30', r: 11, eye: '#ffe060' },
+  kultahiisi: { body: '#b89a30', r: 11, eye: '#ffffff' },
+  kivenheittaja: { body: '#5a6a6a', r: 12, eye: '#ffe060' },
   luuranko: { body: '#d8d0b8', r: 12, eye: '#2a3a5a' },
   karhu: { body: '#4a3222', r: 22, eye: '#ffb060' },
 };
@@ -192,6 +196,17 @@ export function enemySprite(id: string, frame: number): Sprite {
       c.beginPath();
       c.arc(r * 0.9, bob, r * 0.8, -1.3, 1.3);
       c.stroke();
+    } else if (id === 'varas') {
+      // a sack over the shoulder
+      ell(c, -r * 0.9, bob - r * 0.5, r * 0.45, r * 0.55, '#8a6a3a');
+    } else if (id === 'kultahiisi') {
+      // glints
+      ell(c, -r * 0.6, bob - r * 1.1, 1.4, 1.4, '#fff8c0', null);
+      ell(c, r * 0.9, bob - r * 0.9, 1.1, 1.1, '#fff8c0', null);
+    } else if (id === 'kivenheittaja') {
+      ell(c, r * 1.1, bob - 2, r * 0.4, r * 0.4, '#8a8a86');
+    } else if (id === 'ansastaja') {
+      rect(c, r * 0.6, bob - 3, r * 0.7, r * 0.5, '#4a3418', 1);
     } else {
       c.strokeStyle = '#6a4a2a';
       c.lineWidth = 3;

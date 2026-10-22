@@ -10,7 +10,8 @@ import { Rng } from '../game/rng';
 import { botInput, botSpend, BOT, HUMAN } from '../../tools/autoplayer';
 import { t, tr } from '../i18n';
 import { RARITY_COLOR, isMelee, kindIcon, makePotion, rollCoat, rollWeapon, type Item, type MeleeKind } from '../game/items';
-import { dropItem } from '../game/combat';
+import { dropItem, hurtEnemy, wake as wakeEnemy } from '../game/combat';
+import { NO_INPUT, type Enemy } from '../game/state';
 import { NODE_BY_ID } from '../game/content/tree';
 import { held, heroStats, fighterOf } from '../game/hero';
 import { xpToNext, buildName } from '../game/skills';
@@ -103,6 +104,20 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
     };
     // For the layout checks: where the hero is drawn, in css px.
     (window as unknown as { __heroScreen: () => { x: number; y: number } }).__heroScreen = () => renderer.toScreen(s.hero.x, s.hero.y);
+    // For scripts/mob-shots.mjs: a mob beside the hero, a hit, a wake, the sim run a moment.
+    (window as unknown as { __mob: (kind: string, dx: number, dy: number, aware: boolean) => Enemy }).__mob = (kind, dx, dy, aware) => {
+      const e = spawn(s, kind, s.hero.x + dx, s.hero.y + dy, -1, !aware);
+      if (aware) {
+        e.aware = true;
+        e.mode = 'chase';
+      }
+      return e;
+    };
+    (window as unknown as { __hurt: (e: Enemy, dmg: number) => void }).__hurt = (e, dmg) => hurtEnemy(s, e, dmg, { skill: null, knock: 0, angle: 0, what: 'test' });
+    (window as unknown as { __wake: (e: Enemy) => void }).__wake = (e) => wakeEnemy(s, e);
+    (window as unknown as { __run: (secs: number) => void }).__run = (secs) => {
+      for (let i = 0; i < secs * 60; i++) step(s, { ...NO_INPUT, tech: [false, false] }, DT);
+    };
     // For scripts/arsenal-shots.mjs: a rolled weapon, and a dummy beside the hero.
     (window as unknown as { __roll: (kind: MeleeKind | 'bow', level: number, rarity: number) => Item }).__roll = (kind, level, rarity) => rollWeapon(s.rng, kind, level, rarity);
     (window as unknown as { __dummy: (kind: string, dx: number, dy: number) => void }).__dummy = (kind, dx, dy) => {

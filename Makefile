@@ -16,11 +16,12 @@
 #   make sheets-check  # every sheet survives a rotation: no sideways scroll, nothing outside, nothing overlapping, portrait to landscape and back
 #   make charge-check  # a charge survives walking, a drift and a second touch on an emulated iPhone; a part charge fires with that much
 #   make screen-check  # the play screen fills an iPhone in landscape, inside its safe area, from the home screen and in Safari (shots/screen/)
+#   make mob-shots     # each mob with its quirk showing, landscape (shots/mobs/)
 #   make arsenal-shots # each melee family charged with its hit shape showing, landscape (shots/arsenal/)
 #   make floor-shots   # three floors of three seeds, the whole floor revealed on the map sheet, into shots/floors/
 #   make mockups       # re-render the design mockups into public/mockups/shots/
 
-.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check screen-check charge-check sheets-check icons floor-shots arsenal-shots mockups
+.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check screen-check charge-check sheets-check icons floor-shots arsenal-shots mob-shots mockups
 
 dev:
 	npm run dev
@@ -88,6 +89,9 @@ floor-shots:
 
 arsenal-shots:
 	node scripts/arsenal-shots.mjs
+
+mob-shots:
+	node scripts/mob-shots.mjs
 
 mockups:
 	node public/mockups/shoot.mjs

@@ -71,3 +71,10 @@ console.log(`end: floor ${s.floor} over ${s.gameOver} t ${Math.round(s.time)}`);
   }
   console.log('hands', h.hands.map((x) => x && `${x.kind} ${x.dmgMin}-${x.dmgMax}`), 'pack', h.pack.length);
 }
+{
+  const d = s.dungeon;
+  const h = s.hero;
+  const vis = s.enemies.filter((e) => !e.dead && seenAt(d, e.x, e.y) === VISIBLE).map((e) => `${e.def.id}:${e.mode}:${(Math.hypot(e.x - h.x, e.y - h.y) / T).toFixed(1)}t hp ${e.hp}/${e.maxHp} aware ${e.aware} tile (${Math.floor(e.x / T)},${Math.floor(e.y / T)})`);
+  console.log('visible:', vis.join(' | '));
+  console.log('projectiles:', s.projectiles.length, 'hero facing', h.facing.toFixed(2), 'draw', h.draw.toFixed(2), 'lock', h.lock.toFixed(2), 'nodes', Object.keys(h.nodes).join(','));
+}

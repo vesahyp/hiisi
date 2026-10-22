@@ -93,12 +93,14 @@ export interface Hero {
   near: number | null;
   /** the item last put into the pack by a swap, highlighted when the pack opens */
   lastStowed: number | null;
+  /** seconds the hero is held fast by a trapper's trap */
+  stuck: number;
   /** the aim the renderer shows */
   aimShow: { on: boolean; x: number; y: number };
   swapCd: number;
 }
 
-export type EnemyMode = 'sleep' | 'idle' | 'chase' | 'windup' | 'strike' | 'charge' | 'stagger' | 'trapped';
+export type EnemyMode = 'sleep' | 'idle' | 'chase' | 'windup' | 'strike' | 'charge' | 'stagger' | 'trapped' | 'flee' | 'playdead' | 'hover';
 
 export interface Enemy {
   id: number;
@@ -138,6 +140,20 @@ export interface Enemy {
   bleed: { t: number; dps: number };
   /** seconds of broken armour left: a third more damage taken (the mace's slam) */
   armorBreak: number;
+  /** what it carries: a weapon it grabbed, the item it stole, the hoard; drops on death */
+  carry: Item | null;
+  /** seconds of rage left (a hiisi below half, the bear woken) */
+  rage: number;
+  /** seconds since it last had a line to the hero while chasing */
+  lostT: number;
+  /** seconds it has fled */
+  fleeT: number;
+  /** the quirk used once: the skeleton's collapse, the thief's theft */
+  quirkUsed: boolean;
+  /** the drop it is heading for: a potion to drink or a weapon to grab */
+  wantDrop: number | null;
+  /** seconds to the next chitter or trap */
+  quirkT: number;
 }
 
 export interface Projectile {
@@ -152,7 +168,9 @@ export interface Projectile {
   left: number;
   pierce: number;
   hit: Set<number>;
-  kind: 'arrow' | 'enemyArrow' | 'rain' | 'anchor' | 'ball';
+  kind: 'arrow' | 'enemyArrow' | 'rain' | 'anchor' | 'ball' | 'rock';
+  /** a rock: where it lands, and the flight's length */
+  lob?: { tx: number; ty: number; t: number; dur: number; sx: number; sy: number };
   /** the charge behind a hero's shot, as its damage multiplier */
   power?: number;
   /** the anchor: the enemies it has hooked, dragged in when it turns */
@@ -188,6 +206,8 @@ export interface Trap {
   r: number;
   dmg: number;
   armed: boolean;
+  /** 0 the hero's, 1 a trapper's */
+  team: 0 | 1;
 }
 
 export interface FloatText {
@@ -314,6 +334,7 @@ export function createHero(): Hero {
     hits: 0,
     near: null,
     lastStowed: null,
+    stuck: 0,
     aimShow: { on: false, x: 0, y: 0 },
     swapCd: 0,
   };

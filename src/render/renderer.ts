@@ -155,7 +155,7 @@ export class Renderer {
       if (!dr.seen && d.seen[Math.floor(dr.y / T) * d.w + Math.floor(dr.x / T)] !== VISIBLE) continue;
       bodies.push({ y: dr.y, draw: () => this.drop(ctx, s, dr) });
     }
-    for (const tr of s.traps) bodies.push({ y: tr.y - 1, draw: () => this.trap(ctx, tr.x, tr.y) });
+    for (const tr of s.traps) bodies.push({ y: tr.y - 1, draw: () => this.trap(ctx, tr.x, tr.y, tr.team === 1) });
     for (const e of s.enemies) {
       const vis = d.seen[Math.floor(e.y / T) * d.w + Math.floor(e.x / T)] === VISIBLE;
       if (!vis) continue;
@@ -343,15 +343,15 @@ export class Renderer {
     }
   }
 
-  private trap(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-    ctx.strokeStyle = '#8ae070';
+  private trap(ctx: CanvasRenderingContext2D, x: number, y: number, enemy = false): void {
+    ctx.strokeStyle = enemy ? '#ff5a4a' : '#8ae070';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
     ctx.ellipse(x, y, 16, 9, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = '#8ae070';
+    ctx.fillStyle = enemy ? '#ff5a4a' : '#8ae070';
     for (let k = 0; k < 4; k++) {
       const a = (k / 4) * Math.PI * 2 + this.t;
       ctx.beginPath();
@@ -398,13 +398,44 @@ export class Renderer {
     ctx.globalAlpha = dead ? Math.max(0, e.deathT / 0.5) : over ? 0.55 : 1;
     const flip = Math.cos(e.facing) < 0;
     const sp = enemySprite(e.def.id, frame);
-    if (e.hurtFlash > 0) {
-      ctx.filter = 'brightness(2.2)';
-      blit(ctx, sp, e.x, e.y - 4, flip);
-      ctx.filter = 'none';
-    } else blit(ctx, sp, e.x, e.y - 4, flip);
+    if (!dead && e.mode === 'playdead') {
+      // the bone pile: the sprite on its side, with a twitch now and then
+      ctx.save();
+      ctx.translate(e.x, e.y + 4);
+      ctx.rotate(Math.PI / 2 + Math.sin(this.t * 9) * 0.03);
+      ctx.globalAlpha = 0.85;
+      blit(ctx, sp, 0, 0, flip);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (e.hurtFlash > 0) ctx.filter = 'brightness(2.2)';
+    else if (e.rage > 0) ctx.filter = 'sepia(1) saturate(4) hue-rotate(-30deg) brightness(1.1)';
+    blit(ctx, sp, e.x, e.y - 4, flip);
+    ctx.filter = 'none';
     ctx.globalAlpha = 1;
     if (dead) return;
+    // what it carries, shown over its shoulder
+    if (e.carry) {
+      ctx.save();
+      ctx.translate(e.x + (flip ? -e.r : e.r), e.y - e.r - 2);
+      ctx.rotate(-0.6);
+      const ws = isMelee(e.carry.kind) || e.carry.kind === 'bow' ? weaponSprite(e.carry) : itemSprite(e.carry);
+      ctx.drawImage(ws.img, -ws.ox * 0.6, -ws.oy * 0.6, ws.w * 0.6, ws.h * 0.6);
+      ctx.restore();
+    }
+    if (e.rage > 0 && e.rage < 1e8) {
+      ctx.fillStyle = '#ff5a4a';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('!!', e.x, e.y - e.r - 14);
+    }
+    if (e.mode === 'flee') {
+      ctx.fillStyle = '#ffd870';
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('~', e.x, e.y - e.r - 14);
+    }
     if (e.mode === 'stagger' || e.mode === 'trapped') {
       ctx.fillStyle = e.mode === 'trapped' ? '#8ae070' : '#ffd040';
       ctx.font = 'bold 11px system-ui, sans-serif';
@@ -572,6 +603,30 @@ export class Renderer {
   }
 
   private projectile(ctx: CanvasRenderingContext2D, p: SimState['projectiles'][number], h: Hero): void {
+    if (p.kind === 'rock' && p.lob) {
+      // the landing circle, and the rock in the air above its shadow
+      const f = Math.min(1, p.lob.t / p.lob.dur);
+      ctx.strokeStyle = `rgba(255,90,60,${0.4 + f * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(p.lob.tx, p.lob.ty, p.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, 7, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const lift = Math.sin(f * Math.PI) * 60;
+      ctx.fillStyle = '#8a8a86';
+      ctx.strokeStyle = '#1a1c1e';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - lift, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      return;
+    }
     if (p.kind === 'ball' || p.kind === 'anchor') {
       // a chain back to the hand
       ctx.strokeStyle = '#8a8e96';

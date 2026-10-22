@@ -9,13 +9,14 @@ declare const process: { argv: string[]; exitCode?: number };
 
 import { generateDungeon, distanceField, hitsSolid, moveCircle, freeSpot, T, VISIBLE, FLOOR, WALL, VOID, DOOR_OPEN, type Dungeon } from '../src/game/dungeon';
 import { DT, newRun, startFloor, step, spawn, nextFloor, countItems, takeInto, wearFrom, packFrom, equip, stow, swapHands, dropFromPack, drink, takeNear, PACK_SIZE } from '../src/game/sim';
-import { dropItem } from '../src/game/combat';
 import { makePotion, rollCoat, isMelee } from '../src/game/items';
 import { NO_INPUT, type HeroInput, type SimState } from '../src/game/state';
 import { ENEMIES } from '../src/game/content/enemies';
 import { hitsToNext, skillCap } from '../src/game/skills';
 import { restore, snapshot } from '../src/game/save';
 import { botInput, botSpend, BOT, HUMAN } from './autoplayer';
+import { enemyDamage, enemySpeed } from '../src/game/ai';
+import { hurtEnemy, wake, dropItem } from '../src/game/combat';
 import { Rng } from '../src/game/rng';
 import { rollWeapon } from '../src/game/items';
 
@@ -443,6 +444,167 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   for (let i = 0; i < 90; i++) step(s, inp({}), DT);
   const d1 = Math.hypot(hooked.x - h.x, hooked.y - h.y);
   check('the anchor drags a hooked enemy from three tiles to your feet', hooked.hp < 1e9 && d1 < 40 && d0 > 80, `${d0.toFixed(0)} px -> ${d1.toFixed(0)} px, hit for ${1e9 - hooked.hp}`);
+}
+
+// ————— the mobs' brains: shared, and a quirk each —————
+{
+  const s = newRun(31);
+  const h = s.hero;
+  arena(s);
+  h.active = 0;
+  h.invuln = 1e9;
+  h.hands[0] = rollWeapon(s.rng, 'sword', 3, 2);
+  const run = (n: number, input: HeroInput = inp({})) => {
+    for (let i = 0; i < n; i++) step(s, input, DT);
+  };
+  const mob = (kind: string, dx: number, dy: number, aware = true) => {
+    const p = freeSpot(s.dungeon, h.x + dx, h.y + dy, 12);
+    const e = spawn(s, kind, p.x, p.y, -1, false);
+    e.aware = aware;
+    e.mode = aware ? 'chase' : 'sleep';
+    return e;
+  };
+  const clear = () => {
+    s.enemies = [];
+    s.drops = [];
+    s.traps = [];
+    s.projectiles = [];
+  };
+  // flee when low
+  clear();
+  let e = mob('hiisi', 3 * T, 0);
+  e.def = { ...e.def, quirk: 'keep' } as typeof e.def;
+  e.hp = Math.round(e.maxHp * 0.2);
+  const d0 = Math.hypot(e.x - h.x, e.y - h.y);
+  run(90);
+  check('a mob low on health flees: its distance grows', e.mode === 'flee' && Math.hypot(e.x - h.x, e.y - h.y) > d0 + 20, `${e.mode}, ${d0.toFixed(0)} -> ${Math.hypot(e.x - h.x, e.y - h.y).toFixed(0)} px`);
+  // flee to a potion and drink it
+  clear();
+  e = mob('luuranko', 3 * T, 0);
+  e.quirkUsed = true;
+  e.hp = Math.round(e.maxHp * 0.2);
+  dropItem(s, e.x + 3 * T, e.y, makePotion('heal', s.potionColors));
+  run(240);
+  check('a fleeing mob walks to a potion and drinks it', e.hp > e.maxHp * 0.5 && !s.drops.some((x) => x.item?.kind === 'potion'), `hp ${e.hp}/${e.maxHp}, mode ${e.mode}`);
+  // grab a weapon, hit harder, drop it on death
+  clear();
+  e = mob('hiisi', 5 * T, 0);
+  const axe = rollWeapon(s.rng, 'axe', 5, 2);
+  dropItem(s, e.x - T, e.y, axe);
+  const dmg0 = enemyDamage(e);
+  run(120);
+  const items0 = countItems(s);
+  check('a mob walking over a weapon grabs it and hits harder', e.carry?.id === axe.id && enemyDamage(e) > dmg0, `carry ${e.carry?.name.fi ?? 'none'}, ${dmg0} -> ${enemyDamage(e)}`);
+  e.hp = 1;
+  hurtEnemy(s, e, 5, { skill: null, knock: 0, angle: 0, what: 'test' });
+  check('the grabbed weapon drops on death, count kept', s.drops.some((x) => x.item?.id === axe.id) && countItems(s) === items0);
+  // the call: a friend out of sight comes
+  clear();
+  e = mob('hiisi', 3 * T, 0, false);
+  e.mode = 'idle';
+  const friend = mob('hiisi', 3 * T, 5 * T, false);
+  friend.mode = 'idle';
+  run(30);
+  check('a mob that notices you calls a friend five tiles off', e.aware && friend.aware, `friend aware ${friend.aware}`);
+  // give up
+  clear();
+  e = mob('hiisi', 3 * T, 0);
+  e.lostT = 11.5;
+  // out of its sight range: the far end of the box
+  const hx = h.x;
+  h.x = 26 * T;
+  h.y = 8 * T;
+  run(60);
+  check('a chase with no line for twelve seconds is given up', !e.aware && e.mode === 'idle', `aware ${e.aware}, mode ${e.mode}`);
+  h.x = hx;
+  h.y = 8 * T;
+  // the coward: alone it hovers, with two friends it attacks
+  clear();
+  e = mob('rotta', 3 * T, 0);
+  run(60);
+  check('a rat alone hangs back and chitters', e.mode === 'hover', e.mode);
+  mob('hiisi', 3 * T, T);
+  mob('hiisi', 3 * T, -T);
+  run(60);
+  check('a rat with two friends attacks', e.mode !== 'hover', e.mode);
+  // rage
+  clear();
+  e = mob('hiisi', 3 * T, 0);
+  const sp0 = enemySpeed(e);
+  hurtEnemy(s, e, Math.round(e.maxHp * 0.6), { skill: null, knock: 0, angle: 0, what: 'test' });
+  check('a hiisi below half health rages: faster and harder', e.rage > 0 && enemySpeed(e) > sp0 * 1.4 && enemyDamage(e) > e.def.dmg, `speed ${sp0} -> ${enemySpeed(e)}`);
+  // play dead, then rise
+  clear();
+  e = mob('luuranko', 3 * T, 0);
+  hurtEnemy(s, e, Math.round(e.maxHp * 0.7), { skill: null, knock: 0, angle: 0, what: 'test' });
+  check('a skeleton low on health plays dead', e.mode === 'playdead', e.mode);
+  run(300);
+  check('and rises again', e.mode !== 'playdead' && !e.dead, e.mode);
+  // the thief: a hit takes a pack item, it runs, killing it drops the item; the count holds
+  clear();
+  h.pack = [makePotion('heal', s.potionColors, 1), rollCoat(s.rng, 2, 1)];
+  const taken = h.pack[1];
+  const n0 = countItems(s);
+  h.invuln = 0;
+  e = mob('varas', 1.2 * T, 0);
+  e.cd = 0;
+  run(120);
+  h.invuln = 1e9;
+  check('a thief that hits takes an item from the pack and runs', e.carry?.id === taken.id && !h.pack.includes(taken) && e.mode === 'flee', `carry ${e.carry?.name.fi ?? 'none'}, mode ${e.mode}`);
+  check('the theft keeps the item count', countItems(s) === n0, `${n0} -> ${countItems(s)}`);
+  e.hp = 1;
+  hurtEnemy(s, e, 5, { skill: null, knock: 0, angle: 0, what: 'test' });
+  check('killing the thief drops the stolen item', s.drops.some((x) => x.item?.id === taken.id) && countItems(s) === n0);
+  // the trapper lays a trap, the hero steps in and is held
+  clear();
+  e = mob('ansastaja', 5 * T, 0);
+  e.quirkT = 0;
+  run(30);
+  const trap = s.traps.find((x) => x.team === 1);
+  check('a trapper lays a red trap between you', !!trap, `${s.traps.length} traps`);
+  if (trap) {
+    h.invuln = 0;
+    h.x = trap.x;
+    h.y = trap.y;
+    const hp0 = h.hp;
+    run(5);
+    check('the hero who steps in is hurt and held', h.hp < hp0 && h.stuck > 0, `hp ${hp0} -> ${h.hp}, stuck ${h.stuck.toFixed(1)}`);
+    h.invuln = 1e9;
+    h.stuck = 0;
+    h.x = 3 * T;
+    h.y = 8 * T;
+  }
+  // the hoarder flees on sight and drops its treasure when killed
+  clear();
+  e = mob('kultahiisi', 3 * T, 0);
+  check('a gold hiisi carries a treasure', !!e.carry && e.carry.rarity >= 2, e.carry ? `${e.carry.name.fi} r${e.carry.rarity}` : 'none');
+  const hd0 = Math.hypot(e.x - h.x, e.y - h.y);
+  run(60);
+  check('and flees on sight', e.mode === 'flee' && Math.hypot(e.x - h.x, e.y - h.y) > hd0 + 20, `${e.mode}`);
+  const treasure = e.carry;
+  e.hp = 1;
+  hurtEnemy(s, e, 5, { skill: null, knock: 0, angle: 0, what: 'test' });
+  check('caught, it drops the treasure', !!treasure && s.drops.some((x) => x.item?.id === treasure.id));
+  // the thrower: a rock lands in its circle where the hero stood
+  clear();
+  e = mob('kivenheittaja', 5 * T, 0);
+  e.cd = 0;
+  run(80);
+  const rock = s.projectiles.find((p) => p.kind === 'rock');
+  check('a stone thrower lobs a rock with a landing circle', !!rock && !!rock.lob, rock ? 'rock in the air' : 'no rock');
+  if (rock) {
+    h.invuln = 0;
+    const hp0 = h.hp;
+    run(70);
+    check('the rock lands where the hero stood and hurts', h.hp < hp0, `hp ${hp0} -> ${h.hp}`);
+    h.invuln = 1e9;
+  }
+  // the bear wakes grumpy
+  clear();
+  e = mob('karhu', 3 * T, 0, false);
+  wake(s, e);
+  check('the bear wakes grumpy: raging for its first seconds', e.rage > 0 && e.rage <= 5 && enemySpeed(e) > e.def.speed, `rage ${e.rage.toFixed(1)} s`);
+  check('every mob has a quirk and a line about it', ENEMIES.every((x) => x.quirk && x.quirkText.fi.length > 10));
 }
 
 // ————— experience and skills —————

@@ -382,7 +382,7 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
       break;
     }
     case 'ansa': {
-      s.traps.push({ id: s.nextId++, x: h.x, y: h.y, r: 18, dmg: Math.round(((it.dmgMin + it.dmgMax) / 2) * 1.5), armed: true });
+      s.traps.push({ id: s.nextId++, x: h.x, y: h.y, r: 18, dmg: Math.round(((it.dmgMin + it.dmgMax) / 2) * 1.5), armed: true, team: 0 });
       s.sounds.push('trap');
       say(s, tr('Ansa on viritetty jalkoihisi.', 'A trap is set at your feet.'), '#8ae070');
       break;
@@ -427,6 +427,19 @@ export function updateProjectiles(s: SimState, dt: number): void {
   const h = s.hero;
   for (const p of s.projectiles) {
     if (p.dead) continue;
+    if (p.kind === 'rock' && p.lob) {
+      // an arc from the thrower to the circle: it hurts what stands in the circle when it lands
+      p.lob.t += dt;
+      const f = Math.min(1, p.lob.t / p.lob.dur);
+      p.x = p.lob.sx + (p.lob.tx - p.lob.sx) * f;
+      p.y = p.lob.sy + (p.lob.ty - p.lob.sy) * f;
+      if (f < 1) continue;
+      p.dead = true;
+      s.effects.push({ kind: 'blast', x: p.lob.tx, y: p.lob.ty, angle: 0, r: p.r, life: 0.3, maxLife: 0.3, color: '#c8b8a0' });
+      s.sounds.push('stomp');
+      if (h.alive && Math.hypot(h.x - p.lob.tx, h.y - p.lob.ty) < p.r + h.r) hurtHero(s, p.dmg, tr('Kivi', 'A rock'));
+      continue;
+    }
     if (p.kind === 'rain') {
       p.left -= dt;
       if (p.left > 0) continue;

@@ -45,12 +45,14 @@ interface Mem {
   lastY: number;
   /** the direction a stuck bot tries, held for a moment */
   jiggle: { a: number; until: number } | null;
+  /** where each enemy was last step, for leading a shot */
+  last: Map<number, { x: number; y: number; vx: number; vy: number }>;
 }
 const mems = new WeakMap<SimState, Mem>();
 function memOf(s: SimState): Mem {
   let m = mems.get(s);
   if (!m) {
-    m = { seen: new Map(), mx: 0, my: 0, lastTap: -1, goal: -1, holdSince: -1, ignore: new Map(), wantSince: 0, wantId: -1, stuckT: 0, lastX: 0, lastY: 0, jiggle: null };
+    m = { seen: new Map(), mx: 0, my: 0, lastTap: -1, goal: -1, holdSince: -1, ignore: new Map(), wantSince: 0, wantId: -1, stuckT: 0, lastX: 0, lastY: 0, jiggle: null, last: new Map() };
     mems.set(s, m);
   }
   return m;
@@ -110,13 +112,27 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
   }
   let mx = 0;
   let my = 0;
+  // each enemy's velocity from its last position, so a shot can lead it
+  for (const e of s.enemies) {
+    const l = mem.last.get(e.id);
+    if (l) {
+      // smoothed, so a mob jittering against a wall reads as still
+      l.vx += ((e.x - l.x) / DT - l.vx) * 0.15;
+      l.vy += ((e.y - l.y) / DT - l.vy) * 0.15;
+      l.x = e.x;
+      l.y = e.y;
+    } else mem.last.set(e.id, { x: e.x, y: e.y, vx: 0, vy: 0 });
+  }
 
   // the nearest enemy it can see
   let tgt: Enemy | null = null;
   let td = Infinity;
+  const heldNow = held(h);
   for (const e of s.enemies) {
     if (e.dead || seenAt(d, e.x, e.y) !== VISIBLE) continue;
     const dist = Math.hypot(e.x - h.x, e.y - h.y);
+    // a mob that runs or hangs back is not worth a melee chase past a couple of tiles; a bow reaches it
+    if ((e.mode === 'flee' || e.mode === 'hover') && dist > 2.5 * T && heldNow?.kind !== 'bow' && !h.hands.some((x) => x?.kind === 'bow')) continue;
     if (dist < td && dist < 9 * T) {
       td = dist;
       tgt = e;
@@ -124,7 +140,9 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
   }
 
   if (tgt) {
-    const want = wantHand(h, who, td);
+    const runner = (tgt.mode === 'flee' || tgt.mode === 'hover') && td > 2.5 * T;
+    const bowHand = h.hands.findIndex((x) => x?.kind === 'bow');
+    const want = runner && bowHand >= 0 ? bowHand : wantHand(h, who, td);
     if (want !== h.active && h.hands[want]) inp.swap = true;
     const it = held(h);
     const sees = lineOfSight(d, h.x, h.y, tgt.x, tgt.y);
@@ -150,13 +168,35 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
         mx = f.dx;
         my = f.dy;
       }
-      // draw to full when the draw pays, else tap
+      // draw to full when the draw pays, else tap; the shot leads a moving target
       const full = has(h, 'jannitys');
+      const lead = () => {
+        const l = mem.last.get(tgt!.id);
+        const flight = td / 400;
+        const vx = l && Math.hypot(l.vx, l.vy) > 30 ? l.vx : 0;
+        const vy = l && Math.hypot(l.vx, l.vy) > 30 ? l.vy : 0;
+        let ax = tgt!.x + vx * flight - h.x;
+        let ay = tgt!.y + vy * flight - h.y;
+        // never a lead that aims into a wall: fall back to the straight line
+        if (!clearShot(d, h.x, h.y, h.x + ax, h.y + ay)) {
+          ax = tgt!.x - h.x;
+          ay = tgt!.y - h.y;
+        }
+        const m = Math.hypot(ax, ay) || 1;
+        inp.aimX = ax / m;
+        inp.aimY = ay / m;
+      };
       if ((clear || td <= 1.5 * T) && td < bowRange(it)) {
         if (full) {
           if (h.draw < 1) inp.hold = true;
-          else inp.holdRelease = true;
-        } else inp.attack = true;
+          else {
+            inp.holdRelease = true;
+            lead();
+          }
+        } else {
+          inp.attack = true;
+          lead();
+        }
       }
     } else if (it) {
       const reach = swordReach(h, it);
