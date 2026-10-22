@@ -406,7 +406,43 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
       }
     }
   }
-  check('floors 1 to 5 drop every built family', ['sword', 'axe', 'mace', 'spear', 'dagger'].every((k) => seenKinds.has(k)), [...seenKinds].join(', '));
+  check('floors 1 to 5 drop every family', ['sword', 'axe', 'mace', 'spear', 'dagger', 'flail', 'scythe', 'anchor'].every((k) => seenKinds.has(k)), [...seenKinds].join(', '));
+  // the scythe: one full circle, and a kill gives health back
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'scythe', 1, 0);
+  const sb = dummy('hiisi', -46, 0, false);
+  const sl = dummy('hiisi', 0, 46, false);
+  strike(0);
+  check('the scythe hits all round you in one swing', sb.hp < 1e9 && sl.hp < 1e9, `behind ${1e9 - sb.hp}, side ${1e9 - sl.hp}`);
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'scythe', 5, 3);
+  h.hp = 50;
+  const weak = dummy('rotta', 40, 0, false);
+  weak.hp = 1;
+  strike(1);
+  check('a scythe kill gives a little health back', weak.dead && h.hp > 50, `hp ${h.hp}`);
+  // the flail: the ball orbits while held and hits without a tap; the release hurls it
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'flail', 1, 0);
+  const ring = dummy('hiisi', 0, 44, false);
+  for (let i = 0; i < 120; i++) step(s, inp({ hold: true }), DT);
+  check('the flail held for two seconds hits an enemy beside you without a tap', ring.hp < 1e9, `${1e9 - ring.hp} dealt, spin ${h.orbit.spin.toFixed(1)}`);
+  const farBall = dummy('luuranko', 110, 0, false);
+  h.facing = 0;
+  step(s, inp({ holdRelease: true, aimX: 1, aimY: 0 }), DT);
+  check('the release hurls the ball', s.projectiles.some((p) => p.kind === 'ball'));
+  for (let i = 0; i < 60; i++) step(s, inp({}), DT);
+  check('the hurled ball hits what stands three tiles ahead', farBall.hp < 1e9, `${1e9 - farBall.hp}`);
+  // the anchor: hooks what is on its line and drags it to your feet
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'anchor', 1, 0);
+  const hooked = dummy('hiisi', 96, 0, false);
+  const d0 = Math.hypot(hooked.x - h.x, hooked.y - h.y);
+  step(s, inp({ attack: true, aimX: 1, aimY: 0 }), DT);
+  check('the anchor flies', s.projectiles.some((p) => p.kind === 'anchor'));
+  for (let i = 0; i < 90; i++) step(s, inp({}), DT);
+  const d1 = Math.hypot(hooked.x - h.x, hooked.y - h.y);
+  check('the anchor drags a hooked enemy from three tiles to your feet', hooked.hp < 1e9 && d1 < 40 && d0 > 80, `${d0.toFixed(0)} px -> ${d1.toFixed(0)} px, hit for ${1e9 - hooked.hp}`);
 }
 
 // ————— experience and skills —————

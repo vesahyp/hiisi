@@ -13,7 +13,7 @@ await new Promise((r) => setTimeout(r, 2500));
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ ...devices['iPhone 15'], viewport: { width: 852, height: 393 }, hasTouch: true });
 const page = await ctx.newPage();
-const families = (process.argv[2] ?? 'sword,axe,mace,spear,dagger').split(',');
+const families = (process.argv[2] ?? 'sword,axe,mace,spear,dagger,flail,scythe,anchor').split(',');
 for (const kind of families) {
   await page.goto(`http://localhost:${port}/?lang=fi&seed=9`);
   await page.evaluate(() => localStorage.clear());

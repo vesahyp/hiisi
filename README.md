@@ -63,7 +63,11 @@ E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
   osuma horjuttaa, täysi lataus on maaisku ympärillesi joka murtaa
   panssarin. Keihäs: pitkä pisto linjaa pitkin, osuu kaikkiin linjalla ja
   työntää; täysi lataus on juoksupisto. Tikari: hyvin nopea, ei torju,
-  kolminkertainen huomaamattomaan. Varsta, viikate ja ankkuri ovat tulossa.
+  kolminkertainen huomaamattomaan. Varsta: pito pyörittää kuulaa ympärilläsi
+  ja se osuu mihin sattuu, liike syöttää pyörintää, nosto heittää kuulan
+  eteen. Viikate: yksi hidas täysi ympyrä, tappo palauttaa elämää. Ankkuri:
+  lataus heittää ankkurin linjaa pitkin ja vetää kaiken mihin se tarttuu
+  jalkoihisi.
   Yksi taito, Lähitaistelu, kasvaa niillä kaikilla: ase tuo tuntuman, käsi
   taidon, joten uuden aseen voi ottaa käteen milloin vain.
 - **Esineet:** aseet, takit ja juomat. Aseella on harvinaisuus (harmaa,

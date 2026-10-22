@@ -59,6 +59,8 @@ export function drawTime(h: Hero, it: Item): number {
 export function windTime(h: Hero, it: Item): number {
   return familyOf(it).wind * it.speed * heroStats(h).windMul;
 }
+/** the flail's full spin, radians a second */
+export const ORBIT_FULL = 7;
 export const SWING_TIME = 0.3;
 export function swingLock(h: Hero, it: Item): number {
   return Math.max(0.2, familyOf(it).lock * it.speed * (1 - 0.02 * h.skills.lahi.lvl));
@@ -92,6 +94,28 @@ export function startSwing(s: SimState, h: Hero, it: Item, angle: number, o: Par
 export function release(s: SimState, h: Hero, it: Item, angle: number, charge: number): void {
   const f = familyOf(it);
   const mul = chargeMul(charge);
+  if (f.shape === 'orbit') {
+    // the flail: the ball flies straight ahead with the spin behind it
+    const spin = Math.min(1, h.orbit.spin / ORBIT_FULL);
+    const sp = 300 + 220 * spin;
+    s.projectiles.push({ id: s.nextId++, x: h.x + Math.cos(angle) * 14, y: h.y + Math.sin(angle) * 14, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, r: 9, team: 0, dmg: rollDamage(s, h, it, chargeMul(spin)), left: swordReach(h, it) * 3.2, pierce: 0, hit: new Set(), kind: 'ball', skill: 'lahi', homing: 0, dead: false });
+    h.orbit.spin = 0;
+    h.lock = swingLock(h, it);
+    h.facing = angle;
+    s.sounds.push('whirl');
+    noise(s, h.x, h.y, 5);
+    return;
+  }
+  if (f.shape === 'throw') {
+    // the anchor: a hook down a line, back with whatever it caught
+    const sp = 520;
+    s.projectiles.push({ id: s.nextId++, x: h.x + Math.cos(angle) * 14, y: h.y + Math.sin(angle) * 14, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, r: f.width, team: 0, dmg: rollDamage(s, h, it, mul), left: swordReach(h, it) * (0.6 + 0.4 * charge), pierce: 99, hit: new Set(), kind: 'anchor', skill: 'lahi', homing: 0, dead: false, hooked: [], returning: false });
+    h.lock = swingLock(h, it);
+    h.facing = angle;
+    s.sounds.push('chain');
+    noise(s, h.x, h.y, 6);
+    return;
+  }
   if (f.full === 'slam' && charge >= 1) {
     // the mace's ground slam: a ring round the hero, armour broken
     startSwing(s, h, it, angle, { shape: 'ring', width: Math.PI, reach: swordReach(h, it) * 1.4, dmgMul: mul, effect: 'armorbreak', slam: true, lunge: 0 });
@@ -268,6 +292,29 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     h.draw = 0;
     h.parry = -1;
   }
+  // the flail's ball orbits while the hold lasts; walking feeds the spin
+  if (fam?.shape === 'orbit') {
+    if (h.drawing) {
+      const feed = (h.moving ? 1.6 : 1.0) * ORBIT_FULL * dt / windTime(h, it);
+      h.orbit.spin = Math.min(ORBIT_FULL * 1.3, h.orbit.spin + feed);
+      h.orbit.a += h.orbit.spin * dt;
+      const r = swordReach(h, it);
+      const bx = h.x + Math.cos(h.orbit.a) * r;
+      const by = h.y + Math.sin(h.orbit.a) * r;
+      for (const e of s.enemies) {
+        if (e.dead || Math.hypot(e.x - bx, e.y - by) > e.r + 10) continue;
+        if (s.time - (h.orbit.hit[e.id] ?? -9) < 0.45) continue;
+        if (!lineOfSight(s.dungeon, h.x, h.y, e.x, e.y)) continue;
+        h.orbit.hit[e.id] = s.time;
+        const spin = Math.min(1, h.orbit.spin / ORBIT_FULL);
+        hurtEnemy(s, e, rollDamage(s, h, it, 0.35 + 0.45 * spin), { skill: 'lahi', knock: fam.knock * (0.5 + spin), angle: h.orbit.a + Math.PI / 2, what: 'varsta' });
+        s.effects.push({ kind: 'hit', x: bx, y: by, angle: h.orbit.a, r: 8, life: 0.15, maxLife: 0.15, color: '#ffe9c0' });
+      }
+    } else {
+      h.orbit.spin = Math.max(0, h.orbit.spin - ORBIT_FULL * 2 * dt);
+      h.orbit.a += h.orbit.spin * dt;
+    }
+  }
   const fire = (charge: number) => {
     if (sword) release(s, h, it, aimAngle(s, h, inp, swordReach(h, it) * 1.6), charge);
     else shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), charge);
@@ -406,9 +453,51 @@ export function updateProjectiles(s: SimState, dt: number): void {
       p.y += (p.vy * dt) / n;
       p.left -= step / n;
       // (the sub-step is the line of sight's sampling, so what the eye sees the arrow reaches)
+      if (p.kind === 'anchor' && p.returning) {
+        // on the way back: the hooked come with it, and it ends at the hero's feet
+        const dh = Math.hypot(h.x - p.x, h.y - p.y);
+        for (const id of p.hooked ?? []) {
+          const e = s.enemies.find((x) => x.id === id && !x.dead);
+          if (!e) continue;
+          e.x = p.x + (e.x - p.x) * 0.1;
+          e.y = p.y + (e.y - p.y) * 0.1;
+          e.knock = { vx: 0, vy: 0 };
+          if (e.mode !== 'stagger') {
+            e.mode = 'stagger';
+            e.t = 0.6;
+          }
+        }
+        if (dh < 30) {
+          p.dead = true;
+          for (const id of p.hooked ?? []) {
+            const e = s.enemies.find((x) => x.id === id && !x.dead);
+            if (e) {
+              e.mode = 'stagger';
+              e.t = 0.8;
+            }
+          }
+          if ((p.hooked ?? []).length) s.sounds.push('stomp');
+          break;
+        }
+        continue;
+      }
       if (p.left <= 0 || solidShot(tileAt(d, p.x, p.y))) {
+        if (p.kind === 'anchor' && !p.returning) {
+          // the end of the chain: turn and haul
+          p.returning = true;
+          if (solidShot(tileAt(d, p.x, p.y))) {
+            p.x -= (p.vx * dt) / n;
+            p.y -= (p.vy * dt) / n;
+          }
+          const back = Math.atan2(h.y - p.y, h.x - p.x);
+          const sp = 380;
+          p.vx = Math.cos(back) * sp;
+          p.vy = Math.sin(back) * sp;
+          p.left = 1e9;
+          break;
+        }
         p.dead = true;
-        if (p.left > 0) s.sounds.push('thud');
+        if (p.left > 0) s.sounds.push(p.kind === 'ball' ? 'stomp' : 'thud');
         break;
       }
       if (p.team === 0) {
@@ -416,6 +505,21 @@ export function updateProjectiles(s: SimState, dt: number): void {
           if (e.dead || p.hit.has(e.id)) continue;
           if (Math.hypot(e.x - p.x, e.y - p.y) > e.r + p.r) continue;
           p.hit.add(e.id);
+          if (p.kind === 'anchor') {
+            // hooked: it comes back with the chain
+            hurtEnemy(s, e, p.dmg, { skill: p.skill, knock: 0, angle: 0, what: 'ankkuri' });
+            p.hooked?.push(e.id);
+            continue;
+          }
+          if (p.kind === 'ball') {
+            hurtEnemy(s, e, p.dmg, { skill: p.skill, knock: 320, angle: Math.atan2(p.vy, p.vx), what: 'varsta' });
+            if (!e.def.boss && e.mode !== 'stagger') {
+              e.mode = 'stagger';
+              e.t = 0.5;
+            }
+            p.dead = true;
+            break;
+          }
           hurtEnemy(s, e, p.dmg, { skill: p.skill, knock: 55, angle: Math.atan2(p.vy, p.vx), what: 'nuoli' });
           if (p.pierce > 0) {
             p.pierce--;

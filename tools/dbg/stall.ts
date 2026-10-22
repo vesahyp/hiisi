@@ -62,3 +62,12 @@ console.log(`end: floor ${s.floor} over ${s.gameOver} t ${Math.round(s.time)}`);
   console.log('field here', f[ty * d.w + tx], 'up', f[(ty - 1) * d.w + tx], 'down', f[(ty + 1) * d.w + tx], 'flowDir', JSON.stringify(flowDir(d, h.x, h.y, f)), 'openDir', JSON.stringify(openDir(d, h.x, h.y, h.r, 0, -1)));
   console.log('hero', JSON.stringify({ swing: h.swing, dash: h.dash, drawing: h.drawing, parry: h.parry, lock: h.lock, buffs: h.buffs, hp: h.hp, alive: h.alive }));
 }
+{
+  const d = s.dungeon;
+  const h = s.hero;
+  for (const dr of s.drops) {
+    const f = distanceField(d, [{ x: dr.x, y: dr.y }]);
+    console.log(`drop ${dr.kind} ${dr.item?.kind ?? ''} ${dr.item?.name.fi ?? ''} at tile (${Math.floor(dr.x / T)},${Math.floor(dr.y / T)}) seen ${dr.seen} dist ${Math.hypot(dr.x - h.x, dr.y - h.y).toFixed(0)} field-at-hero ${f[Math.floor(h.y / T) * d.w + Math.floor(h.x / T)]} tile ${d.tiles[Math.floor(dr.y / T) * d.w + Math.floor(dr.x / T)]}`);
+  }
+  console.log('hands', h.hands.map((x) => x && `${x.kind} ${x.dmgMin}-${x.dmgMax}`), 'pack', h.pack.length);
+}

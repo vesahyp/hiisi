@@ -161,7 +161,7 @@ export class Renderer {
       bodies.push({ y: e.y, draw: () => this.enemy(ctx, s, e) });
     }
     bodies.push({ y: h.y, draw: () => this.hero(ctx, s, h) });
-    for (const pr of s.projectiles) bodies.push({ y: pr.y, draw: () => this.projectile(ctx, pr) });
+    for (const pr of s.projectiles) bodies.push({ y: pr.y, draw: () => this.projectile(ctx, pr, h) });
     bodies.sort((a, b) => a.y - b.y);
     let bi = 0;
     for (let yy = y0; yy <= y1 + 1; yy++) {
@@ -462,8 +462,14 @@ export class Renderer {
           ctx.rotate(a);
           ctx.rect(0, -w, r, w * 2);
           ctx.restore();
-        } else if (f.shape === 'ring' || slam) {
+        } else if (f.shape === 'ring' || f.shape === 'orbit' || slam) {
           ctx.arc(h.x, h.y, slam ? r * 1.4 : r, 0, Math.PI * 2);
+        } else if (f.shape === 'throw') {
+          ctx.save();
+          ctx.translate(h.x, h.y);
+          ctx.rotate(a);
+          ctx.rect(0, -f.width, r, f.width * 2);
+          ctx.restore();
         } else {
           ctx.moveTo(h.x, h.y);
           ctx.arc(h.x, h.y, r, a - f.width, a + f.width);
@@ -519,7 +525,31 @@ export class Renderer {
     if (h.hurtFlash > 0) ctx.filter = 'brightness(2)';
     blit(ctx, heroSprite(frame, h.coat && h.coat.rarity >= 2 ? '#6a5a7a' : '#5a5a60'), h.x, h.y - 4, flip);
     ctx.filter = 'none';
-    if (it) {
+    if (it && isMelee(it.kind) && FAMILY[it.kind].shape === 'orbit' && (h.drawing || h.orbit.spin > 0.5)) {
+      // the flail: the haft in hand, the chain out to the ball on its orbit
+      const r = swordReach(h, it);
+      const bx = h.x + Math.cos(h.orbit.a) * r;
+      const by = h.y - 2 + Math.sin(h.orbit.a) * r;
+      ctx.strokeStyle = '#8a8e96';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(h.x, h.y - 2);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#6a6e74';
+      ctx.strokeStyle = '#1a1c1e';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(bx, by, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = RARITY_COLOR[it.rarity];
+      ctx.beginPath();
+      ctx.arc(bx, by, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (it) {
       ctx.save();
       ctx.translate(h.x + Math.cos(h.facing) * 7, h.y - 2 + Math.sin(h.facing) * 4);
       let a = h.facing;
@@ -540,7 +570,41 @@ export class Renderer {
     }
   }
 
-  private projectile(ctx: CanvasRenderingContext2D, p: SimState['projectiles'][number]): void {
+  private projectile(ctx: CanvasRenderingContext2D, p: SimState['projectiles'][number], h: Hero): void {
+    if (p.kind === 'ball' || p.kind === 'anchor') {
+      // a chain back to the hand
+      ctx.strokeStyle = '#8a8e96';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(h.x, h.y - 2);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#6a6e74';
+      ctx.strokeStyle = '#1a1c1e';
+      ctx.lineWidth = 1.5;
+      if (p.kind === 'ball') {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(Math.atan2(p.vy, p.vx));
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#6a6e74';
+        ctx.beginPath();
+        ctx.moveTo(-10, 0);
+        ctx.lineTo(4, 0);
+        ctx.moveTo(4, -8);
+        ctx.quadraticCurveTo(11, 0, 4, 8);
+        ctx.stroke();
+        ctx.restore();
+      }
+      return;
+    }
     if (p.kind === 'rain') {
       ctx.strokeStyle = 'rgba(138,224,112,0.6)';
       ctx.lineWidth = 1;

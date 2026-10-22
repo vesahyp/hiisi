@@ -205,7 +205,8 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
     moveCircle(d, h, h.r, Math.cos(h.swing.angle) * k, Math.sin(h.swing.angle) * k);
   }
   if (inp.aiming && Math.hypot(inp.aimX, inp.aimY) > 0.2 && !h.swing) h.facing = Math.atan2(inp.aimY, inp.aimX);
-  if (openDoorsNear(d, h.x, h.y, h.r + 8) > 0) {
+  // a door opens to a hand on it: the reach covers a body pressed against the frame beside it
+  if (openDoorsNear(d, h.x, h.y, h.r + 16) > 0) {
     s.sounds.push('door');
     say(s, tr('Ovi aukeaa.', 'The door opens.'), '#b8c8a8');
   }

@@ -5,6 +5,7 @@ import { nearestVisible, swordReach, bowRange } from '../src/game/attacks';
 import { canLearn, has, held, learn } from '../src/game/hero';
 import { isMelee, weaponScore } from '../src/game/items';
 import { NODES, NODE_BY_ID, type RowId } from '../src/game/content/tree';
+import { FAMILY } from '../src/game/content/weapons';
 import type { Rng } from '../src/game/rng';
 
 /**
@@ -166,7 +167,14 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
       }
       // close: wind the swing up, and release it in reach; a windup coming
       // is met with the same hold (the guard) or a sidestep
-      if (sees && td < reach * 2.2) {
+      const fam = isMelee(it.kind) ? FAMILY[it.kind] : null;
+      if (fam?.shape === 'orbit') {
+        // the flail: hold and walk into them; hurl it when they are at the chain's end
+        if (sees && td < reach * 3) {
+          if (h.drawing && td > reach * 1.3 && h.orbit.spin > 4) inp.holdRelease = true;
+          else if (h.lock <= 0) inp.hold = true;
+        }
+      } else if (sees && td < reach * 2.2) {
         const threat = tgt.mode === 'windup' && noticed(mem, s, who, -tgt.id);
         if (threat && !has(h, 'torjunta')) {
           mx += -dy * 2;

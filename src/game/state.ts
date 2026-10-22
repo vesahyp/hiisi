@@ -150,7 +150,11 @@ export interface Projectile {
   left: number;
   pierce: number;
   hit: Set<number>;
-  kind: 'arrow' | 'enemyArrow' | 'rain' | 'anchor';
+  kind: 'arrow' | 'enemyArrow' | 'rain' | 'anchor' | 'ball';
+  /** the anchor: the enemies it has hooked, dragged in when it turns */
+  hooked?: number[];
+  /** the anchor on its way back */
+  returning?: boolean;
   /** the skill a hero shot trains */
   skill: SkillId | null;
   homing: number;

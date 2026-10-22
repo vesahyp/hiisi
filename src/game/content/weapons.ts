@@ -46,7 +46,7 @@ export interface Family {
   full: 'none' | 'slam' | 'run';
   affixes: Affix[];
   sound: string;
-  /** drop weight on floors 1 to 5; 0 until the family is built */
+  /** drop weight on floors 1 to 5 */
   weight: number;
   /** what the card says it does */
   what: Text;
@@ -86,19 +86,19 @@ export const FAMILIES: Family[] = [
   {
     kind: 'flail', name: L('Varsta', 'Flail'), fighter: L('Varstamies', 'Flailman'), bases: [L('varsta', 'flail'), L('kuulaketju', 'ball and chain'), L('piikkikuula', 'morning star')], icon: '⛓',
     lo: 11, hi: 17, swing: 1.2, lock: 0.8, wind: 1.3, reach: 46, width: 1.0, shape: 'orbit', lunge: 0, knock: 180, heavy: true, guard: false, effect: 'none', full: 'none',
-    affixes: ['sharp', 'heavy', 'long'], sound: 'whirl', weight: 0,
+    affixes: ['sharp', 'heavy', 'long'], sound: 'whirl', weight: 1.2,
     what: L('Pito pyörittää kuulaa ympärilläsi: se osuu mihin sattuu. Liike syöttää pyörintää. Nosto heittää kuulan suoraan eteen.', 'Hold and the ball orbits you, hitting what it meets. Moving feeds the spin. The release hurls the ball straight ahead.'),
   },
   {
     kind: 'scythe', name: L('Viikate', 'Scythe'), fighter: L('Viikatemies', 'Reaper'), bases: [L('viikate', 'scythe'), L('kuolonviikate', 'reaper')], icon: '⚰',
     lo: 13, hi: 21, swing: 1.8, lock: 1.1, wind: 1.1, reach: 52, width: Math.PI, shape: 'ring', lunge: 0, knock: 120, heavy: true, guard: false, effect: 'reap', full: 'none',
-    affixes: ['sharp', 'long'], sound: 'reap', weight: 0,
+    affixes: ['sharp', 'long'], sound: 'reap', weight: 1,
     what: L('Yksi hidas täysi ympyrä: osuu kaikkiin ympärilläsi. Tappo palauttaa vähän elämää.', 'One slow full circle: hits everything round you. A kill gives a little health back.'),
   },
   {
     kind: 'anchor', name: L('Ankkuri', 'Anchor'), fighter: L('Ankkurimies', 'Anchorman'), bases: [L('ankkuri', 'anchor'), L('ketjuankkuri', 'chained anchor')], icon: '⚓',
     lo: 15, hi: 24, swing: 1.4, lock: 1.2, wind: 1.2, reach: 128, width: 14, shape: 'throw', lunge: 0, knock: 0, heavy: true, guard: false, effect: 'pull', full: 'none',
-    affixes: ['sharp', 'heavy'], sound: 'chain', weight: 0,
+    affixes: ['sharp', 'heavy'], sound: 'chain', weight: 0.8,
     what: L('Lataus heittää ankkurin suoraan eteen ja vetää kaiken mihin se tarttuu jalkoihisi.', 'A charge hurls the anchor straight ahead and drags everything it hooks to your feet.'),
   },
 ];
