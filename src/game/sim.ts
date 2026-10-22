@@ -5,7 +5,10 @@ import { heroAttack, updateDash, updateProjectiles, updateSwing } from './attack
 import { enemyStep, separate, springTraps } from './ai';
 import { dropItem } from './combat';
 import { has, held, heroStats } from './hero';
-import { makePotion, POTION_COLORS, resetItemIds, rollDrop, rollWeapon, weaponScore, type Item, type PotionKind, POTION_NAME, POTION_COLOR_NAME } from './items';
+import { isMelee, makePotion, POTION_COLORS, resetItemIds, rollDrop, rollWeapon, weaponScore, type Item, type PotionKind, POTION_NAME, POTION_COLOR_NAME } from './items';
+
+/** A thing a hand can hold. */
+export const isWeapon = (it: Item): boolean => isMelee(it.kind) || it.kind === 'bow';
 import { Rng } from './rng';
 import { t, tr, L } from '../i18n';
 import { say } from './log';
@@ -126,6 +129,8 @@ export function spawn(s: SimState, defId: string, x: number, y: number, room: nu
     chargeLeft: 0,
     struck: false,
     swipes: 0,
+    bleed: { t: 0, dps: 0 },
+    armorBreak: 0,
   };
   s.enemies.push(e);
   return e;
@@ -323,7 +328,7 @@ export function takeNear(s: SimState, h: Hero): void {
     wearFrom(s, h, dr);
     return;
   }
-  const same = h.hands.findIndex((x) => x?.kind === it.kind);
+  const same = h.hands.findIndex((x) => x && isMelee(x.kind) === isMelee(it.kind));
   const empty = h.hands[0] === null ? 0 : h.hands[1] === null ? 1 : -1;
   const slot = empty >= 0 ? empty : same >= 0 ? same : h.active;
   takeInto(s, h, dr, slot, false);
@@ -352,9 +357,11 @@ export function autoTake(s: SimState, h: Hero, dr: SimState['drops'][number]): b
     wearFrom(s, h, dr);
     return true;
   }
+  // the same family replaces on the walk; another family is a choice, it waits as a chip
   const same = h.hands.findIndex((x) => x?.kind === it.kind);
+  const sameClass = h.hands.findIndex((x) => x && (isMelee(x.kind) === isMelee(it.kind)));
   const empty = h.hands[0] === null ? 0 : h.hands[1] === null ? 1 : -1;
-  if (empty >= 0 && same < 0) {
+  if (empty >= 0 && sameClass < 0) {
     takeInto(s, h, dr, empty, true);
     return true;
   }
@@ -408,7 +415,7 @@ export function wearFrom(s: SimState, h: Hero, dr: SimState['drops'][number]): v
 /** A weapon from a drop into hand `slot`; the old one into the pack or onto the floor. */
 export function takeInto(s: SimState, h: Hero, dr: SimState['drops'][number], slot: number, auto: boolean): void {
   const it = dr.item;
-  if (!it || (it.kind !== 'sword' && it.kind !== 'bow')) return;
+  if (!it || !isWeapon(it)) return;
   const old = h.hands[slot];
   h.hands[slot] = it;
   if (!auto) h.active = slot;
@@ -510,7 +517,7 @@ export function equip(s: SimState, h: Hero, it: Item, slot: 0 | 1): void {
     sayMove(s, tr(`Ylle: ${t(it.name)}.`, `Worn: ${t(it.name)}.`), old, old ? 'pack' : null, '#b8c8a8');
     return;
   }
-  if (it.kind !== 'sword' && it.kind !== 'bow') return;
+  if (!isWeapon(it)) return;
   const old = h.hands[slot];
   h.hands[slot] = it;
   h.pack = h.pack.filter((x) => x !== it);

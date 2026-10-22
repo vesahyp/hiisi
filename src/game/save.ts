@@ -8,7 +8,7 @@ import { resetItemIds } from './items';
  * and spawns the same cast. Death deletes the save. The sim builds the
  * blob; the game loop writes it, so this file stays headless.
  */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 interface Blob {
   v: number;

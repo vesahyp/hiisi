@@ -57,6 +57,15 @@ E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
 - **Taso antaa taitopisteen.** Taitopuussa on miekan rivi, jousen rivi ja
   yleinen rivi. Syvemmät solmut vaativat rivin taitoa. Pisteet voi palauttaa
   kerroksen alussa, ennen ensimmäistä tappoa.
+- **Lähitaisteluaseita on monta sukua**, ja jokainen pelaa eri tavalla,
+  ei vain eri numeroilla. Miekka: nopea kaari ja askel, ladattuna torjuu.
+  Kirves: leveä hidas halkaisu, osuma lennättää ja vuotaa. Nuija: joka
+  osuma horjuttaa, täysi lataus on maaisku ympärillesi joka murtaa
+  panssarin. Keihäs: pitkä pisto linjaa pitkin, osuu kaikkiin linjalla ja
+  työntää; täysi lataus on juoksupisto. Tikari: hyvin nopea, ei torju,
+  kolminkertainen huomaamattomaan. Varsta, viikate ja ankkuri ovat tulossa.
+  Yksi taito, Lähitaistelu, kasvaa niillä kaikilla: ase tuo tuntuman, käsi
+  taidon, joten uuden aseen voi ottaa käteen milloin vain.
 - **Esineet:** aseet, takit ja juomat. Aseella on harvinaisuus (harmaa,
   vihreä, sininen, violetti) ja sinisestä ylöspäin yksi ominaisuus. Tuntematon
   juoma tunnistetaan juomalla. Arkut aukeavat koskemalla. **Löydöt tulevat

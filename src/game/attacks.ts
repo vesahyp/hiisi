@@ -6,7 +6,8 @@ import { noise } from './ai';
 import { NODE_BY_ID } from './content/tree';
 import { tr } from '../i18n';
 import { say } from './log';
-import { weaponScore, type Item } from './items';
+import { isMelee, weaponScore, type Item } from './items';
+import { FAMILY, type Family } from './content/weapons';
 
 /**
  * The hero's hands. The weapon in the active hand sets the style: a sword
@@ -30,8 +31,13 @@ export function nearestVisible(s: SimState, h: Hero, range: number, los = true):
   return best;
 }
 
+/** The family of a melee weapon in hand; the sword's for anything else, so old callers keep working. */
+export function familyOf(it: Item): Family {
+  return isMelee(it.kind) ? FAMILY[it.kind] : FAMILY.sword;
+}
+
 export function swordReach(h: Hero, it: Item): number {
-  return 44 * it.reach * heroStats(h).reachMul;
+  return familyOf(it).reach * it.reach * heroStats(h).reachMul;
 }
 
 export function bowRange(it: Item): number {
@@ -50,14 +56,12 @@ export const NOCK = 0.6;
 export function drawTime(h: Hero, it: Item): number {
   return DRAW_TIME * it.speed * heroStats(h).drawMul;
 }
-export const WIND_TIME = 0.8;
 export function windTime(h: Hero, it: Item): number {
-  return WIND_TIME * it.speed * heroStats(h).windMul;
+  return familyOf(it).wind * it.speed * heroStats(h).windMul;
 }
 export const SWING_TIME = 0.3;
-export const SWING_LOCK = 0.6;
 export function swingLock(h: Hero, it: Item): number {
-  return Math.max(0.25, SWING_LOCK * it.speed * (1 - 0.02 * h.skills.miekka.lvl));
+  return Math.max(0.2, familyOf(it).lock * it.speed * (1 - 0.02 * h.skills.lahi.lvl));
 }
 /** What a charge is worth: a tap does three fifths, a full hold twice. */
 export function chargeMul(charge: number): number {
@@ -72,15 +76,38 @@ function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
 }
 
 export function startSwing(s: SimState, h: Hero, it: Item, angle: number, o: Partial<Swing> = {}): void {
-  const dur = SWING_TIME * it.speed;
-  h.swing = { t: 0, dur, angle, reach: swordReach(h, it), width: 1.05, dmgMul: 1, hit: new Set(), passes: 1, lunge: 10, ...o };
+  const f = familyOf(it);
+  const dur = SWING_TIME * f.swing * it.speed;
+  const effect = f.effect === 'pull' || f.effect === 'none' ? 'none' : f.effect;
+  h.swing = { t: 0, dur, angle, reach: swordReach(h, it), width: f.width, dmgMul: 1, hit: new Set(), passes: 1, lunge: f.lunge, shape: f.shape === 'line' ? 'line' : f.shape === 'ring' ? 'ring' : 'arc', effect, slam: false, ...o };
   h.facing = angle;
   h.lock = swingLock(h, it);
   h.parry = -1;
   h.draw = 0;
   h.drawing = false;
-  s.sounds.push('swing');
-  noise(s, h.x, h.y, 4);
+  s.sounds.push(f.sound);
+}
+
+/** The release of a wound-up melee weapon, with its family's behaviour. */
+export function release(s: SimState, h: Hero, it: Item, angle: number, charge: number): void {
+  const f = familyOf(it);
+  const mul = chargeMul(charge);
+  if (f.full === 'slam' && charge >= 1) {
+    // the mace's ground slam: a ring round the hero, armour broken
+    startSwing(s, h, it, angle, { shape: 'ring', width: Math.PI, reach: swordReach(h, it) * 1.4, dmgMul: mul, effect: 'armorbreak', slam: true, lunge: 0 });
+    s.shake = Math.max(s.shake, 0.6);
+    s.sounds.push('stomp');
+    return;
+  }
+  if (f.full === 'run' && charge >= 1) {
+    // the spear's running thrust: a dash, then the line
+    h.dash = { t: 0.16, dx: Math.cos(angle), dy: Math.sin(angle), target: -1 };
+    h.facing = angle;
+    h.invuln = Math.max(h.invuln, 0.2);
+    s.sounds.push('dash');
+    return;
+  }
+  startSwing(s, h, it, angle, { dmgMul: mul });
 }
 
 /** The swing's hit lands partway through; a whirl lands twice. */
@@ -95,16 +122,28 @@ export function updateSwing(s: SimState, h: Hero, dt: number): void {
   const landed = (at: number) => before < at && sw.t >= at;
   if (landed(hitAt) || (sw.passes > 1 && landed(hitAt2))) {
     if (landed(hitAt2)) sw.hit.clear();
-    s.effects.push({ kind: 'slash', x: h.x, y: h.y, angle: sw.angle, r: sw.reach, life: 0.22, maxLife: 0.22, color: '#ffe9c0' });
+    s.effects.push({ kind: sw.shape === 'line' ? 'thrust' : sw.shape === 'ring' ? 'ring' : 'slash', x: h.x, y: h.y, angle: sw.angle, r: sw.reach, life: sw.slam ? 0.4 : 0.22, maxLife: sw.slam ? 0.4 : 0.22, color: sw.slam ? '#ff9a60' : '#ffe9c0' });
+    const f = it ? familyOf(it) : FAMILY.sword;
+    // the blow is what wakes a room, when it lands; a dagger wakes only who it touches
+    noise(s, h.x, h.y, f.kind === 'dagger' ? 0.5 : f.heavy ? 6 : 4);
     for (const e of s.enemies) {
       if (e.dead || sw.hit.has(e.id)) continue;
       const dx = e.x - h.x;
       const dy = e.y - h.y;
       const dist = Math.hypot(dx, dy);
-      if (dist > sw.reach + e.r) continue;
       const a = Math.atan2(dy, dx);
-      const diff = Math.abs(Math.atan2(Math.sin(a - sw.angle), Math.cos(a - sw.angle)));
-      if (diff > sw.width) continue;
+      if (sw.shape === 'line') {
+        // a thrust: a bar from the hero along the angle
+        const along = dx * Math.cos(sw.angle) + dy * Math.sin(sw.angle);
+        const across = Math.abs(-dx * Math.sin(sw.angle) + dy * Math.cos(sw.angle));
+        if (along < 0 || along > sw.reach + e.r || across > sw.width + e.r) continue;
+      } else {
+        if (dist > sw.reach + e.r) continue;
+        if (sw.shape === 'arc') {
+          const diff = Math.abs(Math.atan2(Math.sin(a - sw.angle), Math.cos(a - sw.angle)));
+          if (diff > sw.width) continue;
+        }
+      }
       if (!lineOfSight(s.dungeon, h.x, h.y, e.x, e.y)) continue;
       sw.hit.add(e.id);
       if (!it) continue;
@@ -114,8 +153,34 @@ export function updateSwing(s: SimState, h: Hero, dt: number): void {
         mul *= 2;
         crit = true;
       }
+      // the dagger: triple on an enemy that has not noticed you
+      if (sw.effect === 'backstab' && !e.aware) {
+        mul *= 3;
+        crit = true;
+        s.texts.push({ x: e.x, y: e.y - e.r - 22, text: tr('selkään', 'backstab'), color: '#c9b7ff', life: 1, size: 12 });
+      }
       const dmg = rollDamage(s, h, it, mul);
-      hurtEnemy(s, e, dmg, { skill: 'miekka', knock: it.affix === 'heavy' ? 260 : 100, angle: a, crit, what: 'miekka' });
+      const knock = sw.effect === 'push' ? f.knock : it.affix === 'heavy' ? f.knock * 2 : f.knock;
+      const hpBefore = e.hp;
+      hurtEnemy(s, e, dmg, { skill: 'lahi', knock, angle: sw.shape === 'line' ? sw.angle : a, crit, what: f.kind });
+      if (e.dead) {
+        if (sw.effect === 'reap') {
+          h.hp = Math.min(heroStats(h).maxHp, h.hp + 3);
+          s.texts.push({ x: h.x, y: h.y - 30, text: '+3', color: '#8ae070', life: 0.8, size: 12 });
+        }
+        continue;
+      }
+      if (sw.effect === 'bleed') e.bleed = { t: 3, dps: Math.max(2, Math.round(dmg * 0.25)) };
+      if (sw.effect === 'push' && !e.def.boss && e.mode !== 'stagger') {
+        e.mode = 'stagger';
+        e.t = 0.5;
+      }
+      if ((sw.effect === 'stagger' || sw.effect === 'armorbreak') && !e.def.boss && e.mode !== 'stagger') {
+        e.mode = 'stagger';
+        e.t = Math.max(e.t, 0.8);
+      }
+      if (sw.effect === 'armorbreak') e.armorBreak = 5;
+      void hpBefore;
     }
   }
   if (sw.t >= sw.dur) h.swing = null;
@@ -174,7 +239,8 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     s.sounds.push('swap');
   }
   if (!it) return;
-  const sword = it.kind === 'sword';
+  const sword = isMelee(it.kind);
+  const fam = isMelee(it.kind) ? FAMILY[it.kind] : null;
 
   // the hold verb charges: the bow draws, the sword winds up (and, with
   // Torjunta, guards from the front while it does); the release fires with
@@ -188,7 +254,7 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     const before = h.draw;
     h.draw = Math.min(1, h.draw + dt / (sword ? windTime(h, it) : drawTime(h, it)));
     if (h.draw >= 1 && before < 1) s.sounds.push('drawfull');
-    if (sword && has(h, 'torjunta')) {
+    if (sword && fam?.guard && has(h, 'torjunta')) {
       if (h.parry < 0) h.parry = 0;
       else h.parry += dt;
     }
@@ -203,7 +269,7 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     h.parry = -1;
   }
   const fire = (charge: number) => {
-    if (sword) startSwing(s, h, it, aimAngle(s, h, inp, swordReach(h, it) * 1.6), { dmgMul: chargeMul(charge) });
+    if (sword) release(s, h, it, aimAngle(s, h, inp, swordReach(h, it) * 1.6), charge);
     else shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), charge);
   };
   if (inp.holdRelease && h.drawing) {
@@ -227,18 +293,21 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
   const d = NODE_BY_ID[id];
   if ((h.cooldowns[id] ?? 0) > 0) return;
   const it = held(h);
-  const needs = d.row === 'miekka' ? 'sword' : d.row === 'jousi' ? 'bow' : null;
-  if (needs && it?.kind !== needs) {
-    say(s, needs === 'sword' ? tr('Tekniikka tarvitsee miekan käteen.', 'The technique needs a sword in hand.') : tr('Tekniikka tarvitsee jousen käteen.', 'The technique needs a bow in hand.'), '#ff8a70');
+  const needs = d.row === 'lahi' ? 'melee' : d.row === 'jousi' ? 'bow' : null;
+  const held0 = it ? (isMelee(it.kind) ? 'melee' : it.kind) : null;
+  if (needs && held0 !== needs) {
+    say(s, needs === 'melee' ? tr('Tekniikka tarvitsee lähitaisteluaseen käteen.', 'The technique needs a melee weapon in hand.') : tr('Tekniikka tarvitsee jousen käteen.', 'The technique needs a bow in hand.'), '#ff8a70');
     return;
   }
   if (!it) return;
   if (h.swing || h.lock > 0 || h.dash) return;
   switch (id) {
     case 'halkaisu': {
+      // the weapon's heavy blow: half again as wide and as strong
       const angle = aimAngle(s, h, inp, swordReach(h, it) * 1.8);
-      startSwing(s, h, it, angle, { width: 1.75, dmgMul: 1.5, reach: swordReach(h, it) * 1.15, dur: 0.38 * it.speed, lunge: 10 });
-      h.lock = 0.55 * it.speed;
+      const f = familyOf(it);
+      startSwing(s, h, it, angle, { width: f.shape === 'line' ? f.width * 2 : Math.min(Math.PI, f.width * 1.5), dmgMul: 1.5, reach: swordReach(h, it) * 1.15, dur: SWING_TIME * f.swing * 1.3 * it.speed });
+      h.lock = swingLock(h, it) * 1.2;
       break;
     }
     case 'syoksy': {
@@ -257,7 +326,7 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
       break;
     }
     case 'pyorre': {
-      startSwing(s, h, it, h.facing, { width: Math.PI, passes: 2, dur: 0.6 * it.speed, lunge: 0 });
+      startSwing(s, h, it, h.facing, { shape: 'ring', width: Math.PI, passes: 2, dur: 0.6 * it.speed, lunge: 0 });
       h.lock = 0.7 * it.speed;
       break;
     }
@@ -295,7 +364,7 @@ export function updateDash(s: SimState, h: Hero, dt: number): void {
   if (d.t <= 0) {
     h.dash = null;
     if (it) {
-      const e = s.enemies.find((x) => x.id === d.target && !x.dead);
+      const e = d.target >= 0 ? s.enemies.find((x) => x.id === d.target && !x.dead) : null;
       const angle = e ? Math.atan2(e.y - h.y, e.x - h.x) : h.facing;
       startSwing(s, h, it, angle, { dmgMul: 2, lunge: 0 });
     }

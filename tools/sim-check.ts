@@ -7,10 +7,10 @@
  */
 declare const process: { argv: string[]; exitCode?: number };
 
-import { generateDungeon, distanceField, hitsSolid, moveCircle, T, VISIBLE, FLOOR, WALL, VOID, DOOR_OPEN, type Dungeon } from '../src/game/dungeon';
+import { generateDungeon, distanceField, hitsSolid, moveCircle, freeSpot, T, VISIBLE, FLOOR, WALL, VOID, DOOR_OPEN, type Dungeon } from '../src/game/dungeon';
 import { DT, newRun, startFloor, step, spawn, nextFloor, countItems, takeInto, wearFrom, packFrom, equip, stow, swapHands, dropFromPack, drink, takeNear, PACK_SIZE } from '../src/game/sim';
 import { dropItem } from '../src/game/combat';
-import { makePotion, rollCoat } from '../src/game/items';
+import { makePotion, rollCoat, isMelee } from '../src/game/items';
 import { NO_INPUT, type HeroInput, type SimState } from '../src/game/state';
 import { ENEMIES } from '../src/game/content/enemies';
 import { hitsToNext, skillCap } from '../src/game/skills';
@@ -27,18 +27,6 @@ const check = (name: string, ok: boolean, extra = '') => {
 
 const inp = (o: Partial<HeroInput>): HeroInput => ({ ...NO_INPUT, tech: [false, false], ...o });
 
-/** The hero at the left end of the floor's widest room, facing right, with the room in view. */
-function arena(s: SimState): void {
-  const d = s.dungeon;
-  const room = [...d.rooms].sort((a, b) => b.w - a.w)[0];
-  s.hero.x = (room.x + 1.5) * T;
-  s.hero.y = (room.cy + 0.5) * T;
-  s.hero.facing = 0;
-  s.enemies = [];
-  d.seen.fill(VISIBLE);
-}
-
-// ————— corners: the hero slides, never catches —————
 /** A floor from ASCII: # wall, . floor, ' open door, space void. */
 function asciiDungeon(rows: string[]): Dungeon {
   const w = rows[0].length;
@@ -47,6 +35,22 @@ function asciiDungeon(rows: string[]): Dungeon {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) tiles[y * w + x] = rows[y][x] === '#' ? WALL : rows[y][x] === '.' ? FLOOR : rows[y][x] === "'" ? DOOR_OPEN : VOID;
   return { w, h, tiles, rooms: [], roomAt: new Int16Array(w * h).fill(-1), seen: new Uint8Array(w * h), flow: new Int16Array(w * h).fill(-1), startX: 0, startY: 0, downX: 0, downY: 0, downRoom: 0, floor: 1 };
 }
+/** The hero at the left end of a plain open box, facing right, with nothing in the way: the arena for the hand tests. */
+function arena(s: SimState): void {
+  const w = 28;
+  const hh = 16;
+  const rows: string[] = [];
+  for (let y = 0; y < hh; y++) rows.push(y === 0 || y === hh - 1 ? '#'.repeat(w) : '#' + '.'.repeat(w - 2) + '#');
+  s.dungeon = asciiDungeon(rows);
+  s.hero.x = 3 * T;
+  s.hero.y = 8 * T;
+  s.hero.facing = 0;
+  s.enemies = [];
+  s.drops = [];
+  s.dungeon.seen.fill(VISIBLE);
+}
+
+// ————— corners: the hero slides, never catches —————
 {
   // a room, a door one tile wide in its right wall, a corridor beyond
   const d = asciiDungeon([
@@ -136,7 +140,7 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   const hp0 = e.hp;
   for (let i = 0; i < 40; i++) step(s, inp({ attack: i === 0 }), DT);
   check('a sword strike hurts a hiisi in reach', e.hp < hp0, `${hp0} -> ${e.hp}`);
-  check('the hit trained the sword', h.skills.miekka.hits === 1 || h.skills.miekka.lvl > 0);
+  check('the hit trained the melee skill', h.skills.lahi.hits === 1 || h.skills.lahi.lvl > 0);
   const far = spawn(s, 'hiisi', h.x + 200, h.y, -1, false);
   const fhp = far.hp;
   for (let i = 0; i < 40; i++) step(s, inp({ attack: i === 0 }), DT);
@@ -282,6 +286,129 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   check('a full wind-up and release cycles about every one and a half seconds', wound >= 5 && wound <= 9, `${wound} heavy swings in 10 s`);
 }
 
+// ————— the melee families: each plays by its own rule —————
+{
+  const s = newRun(9);
+  const h = s.hero;
+  arena(s);
+  h.active = 0;
+  h.invuln = 1e9;
+  const home = { x: h.x, y: h.y };
+  const dummy = (kind: string, dx: number, dy: number, aware = true) => {
+    const p = freeSpot(s.dungeon, h.x + dx, h.y + dy, 12);
+    const e = spawn(s, kind, p.x, p.y, -1, false);
+    e.hp = 1e9;
+    e.aware = aware;
+    e.mode = aware ? 'chase' : 'sleep';
+    return e;
+  };
+  const reset = () => {
+    h.x = home.x;
+    h.y = home.y;
+    h.lock = 0;
+    h.draw = 0;
+    h.drawing = false;
+    h.swing = null;
+    h.dash = null;
+    s.enemies = [];
+  };
+  const strike = (charge: number) => {
+    if (charge <= 0) step(s, inp({ attack: true }), DT);
+    else {
+      while (h.draw < charge) step(s, inp({ hold: true }), DT);
+      step(s, inp({ holdRelease: true }), DT);
+    }
+    for (let i = 0; i < 60; i++) step(s, inp({}), DT);
+  };
+  // the axe: a wide cleave that bleeds
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'axe', 1, 0);
+  const side = dummy('hiisi', 10, 44);
+  const front = dummy('hiisi', 44, 0);
+  const hp0 = side.hp;
+  strike(0);
+  check('the axe cleaves wide enough to hit an enemy almost beside you', side.hp < hp0 && front.hp < 1e9, `side ${1e9 - side.hp}, front ${1e9 - front.hp}`);
+  const afterHit = front.hp;
+  for (let i = 0; i < 120; i++) step(s, inp({}), DT);
+  check('an axe wound bleeds for seconds after the blow', front.hp < afterHit, `${afterHit - front.hp} more over two seconds`);
+  // the mace: a stagger on every hit, a slam at full charge that breaks armour all round
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'mace', 1, 0);
+  const ahead = dummy('luuranko', 40, 0);
+  let staggered = false;
+  step(s, inp({ attack: true }), DT);
+  for (let i = 0; i < 60; i++) {
+    step(s, inp({}), DT);
+    if (ahead.mode === 'stagger') staggered = true;
+  }
+  check('a mace hit staggers', staggered, `hit for ${1e9 - ahead.hp}`);
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'mace', 1, 0);
+  const behind = dummy('hiisi', -48, 0, false);
+  const left = dummy('hiisi', 0, -48, false);
+  strike(1);
+  check('a full-charge mace slam hits all round, behind you too', behind.hp < 1e9 && left.hp < 1e9 && behind.armorBreak > 0, `behind ${1e9 - behind.hp}, armour broken ${behind.armorBreak.toFixed(1)} s`);
+  const plain = 1e9 - behind.hp;
+  const dmg0 = behind.hp;
+  behind.mode = 'chase';
+  strike(0);
+  check('broken armour takes more from the next hit', dmg0 - behind.hp > 0 && behind.armorBreak > 0, `${dmg0 - behind.hp} vs slam ${plain}`);
+  // the spear: a line that hits two in a row and pushes them back
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'spear', 1, 0);
+  const near = dummy('rotta', 40, 0, false);
+  const far = dummy('rotta', 74, 0, false);
+  const off = dummy('rotta', 40, 40, false);
+  const nx = near.x;
+  step(s, inp({ attack: true }), DT);
+  const eff = h.swing?.effect;
+  let maxKnock = 0;
+  let sawStagger = false;
+  let farthest = nx;
+  for (let i = 0; i < 80; i++) {
+    step(s, inp({}), DT);
+    maxKnock = Math.max(maxKnock, near.knock.vx);
+    farthest = Math.max(farthest, near.x);
+    if (near.mode === 'stagger') sawStagger = true;
+  }
+  check('the spear thrusts down a line: both on it hit, the one beside it not', near.hp < 1e9 && far.hp < 1e9 && off.hp === 1e9, `near ${1e9 - near.hp}, far ${1e9 - far.hp}, off ${1e9 - off.hp}`);
+  check('the spear pushes what it hits away and holds it there a moment', farthest > nx + 30 && sawStagger, `pushed ${(farthest - nx).toFixed(0)} px (${eff}, knock ${maxKnock.toFixed(0)}), then walked back to ${(near.x - nx).toFixed(0)}`);
+  // the dagger: fast, and triple on the unaware
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'dagger', 1, 0);
+  const awake = dummy('hiisi', 26, 0, true);
+  strike(0);
+  const seen = 1e9 - awake.hp;
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'dagger', 1, 0);
+  const asleep = dummy('hiisi', 26, 0, false);
+  strike(0);
+  const unseen = 1e9 - asleep.hp;
+  check('the dagger does about triple to an enemy that has not noticed you', unseen > seen * 2.2 && unseen < seen * 5, `${seen} vs ${unseen}`);
+  let stabs = 0;
+  reset();
+  h.hands[0] = rollWeapon(s.rng, 'dagger', 1, 0);
+  for (let i = 0; i < 600; i++) {
+    s.sounds.length = 0;
+    step(s, inp({ attack: true }), DT);
+    stabs += s.sounds.filter((x) => x === 'stab').length;
+  }
+  check('the dagger stabs about three times a second', stabs >= 25 && stabs <= 40, `${stabs} in 10 s`);
+  // the drops: several families on the early floors
+  const seenKinds = new Set<string>();
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = newRun(seed);
+    for (let f = 1; f <= 5; f++) {
+      if (f > 1) nextFloor(r);
+      for (const dr of r.drops) {
+        if (dr.item && isMelee(dr.item.kind)) seenKinds.add(dr.item.kind);
+        for (const it of dr.loot) if (isMelee(it.kind)) seenKinds.add(it.kind);
+      }
+    }
+  }
+  check('floors 1 to 5 drop every built family', ['sword', 'axe', 'mace', 'spear', 'dagger'].every((k) => seenKinds.has(k)), [...seenKinds].join(', '));
+}
+
 // ————— experience and skills —————
 {
   const s = newRun(5);
@@ -305,7 +432,7 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
     h.hp = 100;
   }
   check('kills give experience and levels', h.level >= 3, `level ${h.level} after ${kills} rats, ${h.points} points${miss ? '; ' + miss : ''}`);
-  check('the sword skill stops at the floor cap', h.skills.miekka.lvl <= skillCap(s.floor), `miekka ${h.skills.miekka.lvl}, cap ${skillCap(s.floor)}`);
+  check('the melee skill stops at the floor cap', h.skills.lahi.lvl <= skillCap(s.floor), `lahi ${h.skills.lahi.lvl}, cap ${skillCap(s.floor)}`);
   check('low skill levels take few hits', hitsToNext(0) <= 5 && hitsToNext(10) > hitsToNext(0));
 }
 // ————— nothing vanishes: every path that moves an item keeps the count —————

@@ -3,7 +3,7 @@
  * canvas paths at the render resolution and reused as an image.
  * Coordinates inside a draw function are world units centred on (0, 0).
  */
-import { RARITY_COLOR, type Item } from '../game/items';
+import { RARITY_COLOR, isMelee, type Item } from '../game/items';
 
 export interface Sprite {
   img: HTMLCanvasElement;
@@ -203,96 +203,211 @@ export function enemySprite(id: string, frame: number): Sprite {
   });
 }
 
-/** A weapon held in a hand, pointing right; the renderer rotates it. */
+/** A weapon held in a hand, pointing right; the renderer rotates it. Each family has its own silhouette. */
 export function weaponSprite(it: Item): Sprite {
   const col = RARITY_COLOR[it.rarity];
-  return make(`weapon:${it.kind}:${it.rarity}:${it.affix ?? ''}`, 22, 12, (c) => {
+  return make(`weapon:${it.kind}:${it.rarity}:${it.affix ?? ''}`, 30, 14, (c) => {
     c.lineCap = 'round';
-    if (it.kind === 'sword') {
-      const len = 16 * (it.affix === 'long' ? 1.3 : 1);
+    const haft = (x0: number, x1: number, w = 3, color = '#5a3a1a') => {
       c.strokeStyle = '#1a1c1e';
-      c.lineWidth = 4.5;
+      c.lineWidth = w + 1.5;
       c.beginPath();
-      c.moveTo(-2, 0);
-      c.lineTo(len, 0);
+      c.moveTo(x0, 0);
+      c.lineTo(x1, 0);
       c.stroke();
-      c.strokeStyle = it.rarity >= 3 ? '#e8d0ff' : '#e0e4e8';
-      c.lineWidth = 2.8;
+      c.strokeStyle = color;
+      c.lineWidth = w;
       c.beginPath();
-      c.moveTo(-2, 0);
-      c.lineTo(len, 0);
+      c.moveTo(x0, 0);
+      c.lineTo(x1, 0);
       c.stroke();
-      c.strokeStyle = col;
-      c.lineWidth = 3;
-      c.beginPath();
-      c.moveTo(0, -4.5);
-      c.lineTo(0, 4.5);
-      c.stroke();
-      c.strokeStyle = '#5a3a1a';
-      c.lineWidth = 3;
-      c.beginPath();
-      c.moveTo(-6, 0);
-      c.lineTo(-1, 0);
-      c.stroke();
-    } else {
+    };
+    const blade = (x0: number, x1: number, w: number, color: string) => {
       c.strokeStyle = '#1a1c1e';
-      c.lineWidth = 4.5;
+      c.lineWidth = w + 1.5;
       c.beginPath();
-      c.arc(2, 0, 10, -1.3, 1.3);
+      c.moveTo(x0, 0);
+      c.lineTo(x1, 0);
       c.stroke();
-      c.strokeStyle = it.rarity >= 2 ? '#a06a3a' : '#8a5a2a';
-      c.lineWidth = 3;
+      c.strokeStyle = color;
+      c.lineWidth = w;
       c.beginPath();
-      c.arc(2, 0, 10, -1.3, 1.3);
+      c.moveTo(x0, 0);
+      c.lineTo(x1, 0);
       c.stroke();
-      c.strokeStyle = col;
-      c.lineWidth = 1.2;
-      c.beginPath();
-      c.moveTo(4.7, -9.6);
-      c.lineTo(-2, 0);
-      c.lineTo(4.7, 9.6);
-      c.stroke();
+    };
+    const steel = it.rarity >= 3 ? '#e8d0ff' : '#e0e4e8';
+    switch (it.kind) {
+      case 'bow':
+        c.strokeStyle = '#1a1c1e';
+        c.lineWidth = 4.5;
+        c.beginPath();
+        c.arc(2, 0, 10, -1.3, 1.3);
+        c.stroke();
+        c.strokeStyle = it.rarity >= 2 ? '#a06a3a' : '#8a5a2a';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.arc(2, 0, 10, -1.3, 1.3);
+        c.stroke();
+        c.strokeStyle = col;
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.moveTo(4.7, -9.6);
+        c.lineTo(-2, 0);
+        c.lineTo(4.7, 9.6);
+        c.stroke();
+        return;
+      case 'axe':
+        haft(-8, 14);
+        c.fillStyle = steel;
+        c.strokeStyle = '#1a1c1e';
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.moveTo(10, -1);
+        c.quadraticCurveTo(18, -10, 24, -8);
+        c.quadraticCurveTo(22, 0, 24, 8);
+        c.quadraticCurveTo(18, 10, 10, 1);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        c.fillStyle = col;
+        c.fillRect(9, -2, 3, 4);
+        return;
+      case 'mace':
+        haft(-8, 14);
+        c.fillStyle = '#6a6e74';
+        c.strokeStyle = '#1a1c1e';
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.arc(19, 0, 6.5, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        c.fillStyle = col;
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 6) * Math.PI * 2;
+          c.beginPath();
+          c.arc(19 + Math.cos(a) * 6.5, Math.sin(a) * 6.5, 1.6, 0, Math.PI * 2);
+          c.fill();
+        }
+        return;
+      case 'spear':
+        haft(-14, 20, 2.4);
+        c.fillStyle = steel;
+        c.strokeStyle = '#1a1c1e';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(19, -3.5);
+        c.lineTo(29, 0);
+        c.lineTo(19, 3.5);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        c.fillStyle = col;
+        c.fillRect(17, -1.5, 3, 3);
+        return;
+      case 'dagger':
+        blade(-1, 10, 2.4, steel);
+        c.strokeStyle = col;
+        c.lineWidth = 2.5;
+        c.beginPath();
+        c.moveTo(0, -3);
+        c.lineTo(0, 3);
+        c.stroke();
+        haft(-5, -1, 2.5, '#3a2a1a');
+        return;
+      case 'flail':
+        haft(-8, 8);
+        c.strokeStyle = '#8a8e96';
+        c.lineWidth = 1.4;
+        c.setLineDash([2, 2]);
+        c.beginPath();
+        c.moveTo(8, 0);
+        c.lineTo(20, 0);
+        c.stroke();
+        c.setLineDash([]);
+        c.fillStyle = '#6a6e74';
+        c.strokeStyle = '#1a1c1e';
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.arc(24, 0, 5, 0, Math.PI * 2);
+        c.fill();
+        c.stroke();
+        c.fillStyle = col;
+        c.beginPath();
+        c.arc(24, 0, 1.6, 0, Math.PI * 2);
+        c.fill();
+        return;
+      case 'scythe':
+        haft(-16, 16, 2.6);
+        c.strokeStyle = '#1a1c1e';
+        c.lineWidth = 4;
+        c.beginPath();
+        c.arc(14, -12, 14, 0.5, 1.5);
+        c.stroke();
+        c.strokeStyle = steel;
+        c.lineWidth = 2.6;
+        c.beginPath();
+        c.arc(14, -12, 14, 0.5, 1.5);
+        c.stroke();
+        c.fillStyle = col;
+        c.fillRect(13, -2, 3, 4);
+        return;
+      case 'anchor':
+        c.strokeStyle = '#8a8e96';
+        c.lineWidth = 1.4;
+        c.setLineDash([2, 2]);
+        c.beginPath();
+        c.moveTo(-8, 0);
+        c.lineTo(10, 0);
+        c.stroke();
+        c.setLineDash([]);
+        c.strokeStyle = '#1a1c1e';
+        c.lineWidth = 4.5;
+        c.beginPath();
+        c.moveTo(10, 0);
+        c.lineTo(22, 0);
+        c.moveTo(22, -8);
+        c.quadraticCurveTo(28, 0, 22, 8);
+        c.stroke();
+        c.strokeStyle = '#6a6e74';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(10, 0);
+        c.lineTo(22, 0);
+        c.moveTo(22, -8);
+        c.quadraticCurveTo(28, 0, 22, 8);
+        c.stroke();
+        c.fillStyle = col;
+        c.beginPath();
+        c.arc(11, 0, 2, 0, Math.PI * 2);
+        c.fill();
+        return;
+      default: {
+        // the sword
+        const len = 16 * (it.affix === 'long' ? 1.3 : 1);
+        blade(-2, len, 2.8, steel);
+        c.strokeStyle = col;
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(0, -4.5);
+        c.lineTo(0, 4.5);
+        c.stroke();
+        haft(-6, -1, 3);
+      }
     }
   });
 }
 
 export function itemSprite(it: Item): Sprite {
   const col = RARITY_COLOR[it.rarity];
-  return make(`item:${it.kind}:${it.rarity}:${it.color}:${it.affix ?? ''}`, 14, 14, (c) => {
-    ell(c, 0, 8, 8, 3, 'rgba(0,0,0,0.35)', null);
+  return make(`item:${it.kind}:${it.rarity}:${it.color}:${it.affix ?? ''}`, 16, 16, (c) => {
+    ell(c, 0, 9, 9, 3, 'rgba(0,0,0,0.35)', null);
     c.lineCap = 'round';
-    if (it.kind === 'sword') {
+    if (isMelee(it.kind) || it.kind === 'bow') {
+      // the weapon's own silhouette, tilted, drawn at half size
+      const w = weaponSprite(it);
       c.rotate(-0.7);
-      c.strokeStyle = '#1a1c1e';
-      c.lineWidth = 4;
-      c.beginPath();
-      c.moveTo(-8, 0);
-      c.lineTo(8, 0);
-      c.stroke();
-      c.strokeStyle = '#e0e4e8';
-      c.lineWidth = 2.4;
-      c.beginPath();
-      c.moveTo(-8, 0);
-      c.lineTo(8, 0);
-      c.stroke();
-      c.strokeStyle = col;
-      c.lineWidth = 3;
-      c.beginPath();
-      c.moveTo(-6, -4);
-      c.lineTo(-6, 4);
-      c.stroke();
-    } else if (it.kind === 'bow') {
-      c.strokeStyle = '#8a5a2a';
-      c.lineWidth = 3;
-      c.beginPath();
-      c.arc(-3, 0, 8, -1.2, 1.2);
-      c.stroke();
-      c.strokeStyle = col;
-      c.lineWidth = 1.2;
-      c.beginPath();
-      c.moveTo(0, -7.5);
-      c.lineTo(0, 7.5);
-      c.stroke();
+      c.drawImage(w.img, -w.ox * 0.6, -w.oy * 0.6, w.w * 0.6, w.h * 0.6);
     } else if (it.kind === 'coat') {
       c.beginPath();
       c.moveTo(-8, 8);

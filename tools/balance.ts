@@ -29,6 +29,6 @@ for (let r = 0; r < runs; r++) {
   const h = s.hero;
   const end = s.won ? 'WON' : s.gameOver ? `died: ${last}` : 'time out';
   depth += s.won ? 6 : s.floor;
-  console.log(`seed ${seed}  floor ${s.floor}  ${Math.round(s.time)} s  level ${h.level}  miekka ${h.skills.miekka.lvl} jousi ${h.skills.jousi.lvl}  ${t(buildName(h.skills))}  kills ${s.run.kills}  hp ${Math.round(h.hp)}  ${end}`);
+  console.log(`seed ${seed}  floor ${s.floor}  ${Math.round(s.time)} s  level ${h.level}  lahi ${h.skills.lahi.lvl} jousi ${h.skills.jousi.lvl}  ${t(buildName(h.skills))}  kills ${s.run.kills}  hp ${Math.round(h.hp)}  ${end}`);
 }
 console.log(`mean depth ${(depth / runs).toFixed(2)}`);

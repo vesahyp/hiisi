@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { DT, step, takeInto, wearFrom, packFrom, startFloor, whereOldGoes, whereWord, PACK_SIZE, countItems } from '../game/sim';
+import { DT, step, takeInto, wearFrom, packFrom, startFloor, whereOldGoes, whereWord, PACK_SIZE, countItems, isWeapon, spawn } from '../game/sim';
 import { Choice } from './Compare';
 import { generateDungeon } from '../game/dungeon';
 import type { SimState } from '../game/state';
@@ -9,10 +9,10 @@ import { audio } from '../audio';
 import { Rng } from '../game/rng';
 import { botInput, botSpend, BOT, HUMAN } from '../../tools/autoplayer';
 import { t, tr } from '../i18n';
-import { RARITY_COLOR, makePotion, rollCoat, rollWeapon, type Item } from '../game/items';
+import { RARITY_COLOR, isMelee, kindName, makePotion, rollCoat, rollWeapon, type Item, type MeleeKind } from '../game/items';
 import { dropItem } from '../game/combat';
 import { NODE_BY_ID } from '../game/content/tree';
-import { held, heroStats } from '../game/hero';
+import { held, heroStats, fighterOf } from '../game/hero';
 import { xpToNext, buildName } from '../game/skills';
 import { ItemCard } from './Cards';
 import { Sheets, type Tab } from './Sheets';
@@ -97,9 +97,17 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
       const d = s.dungeon;
       for (let i = 0; i < d.seen.length; i++) if (d.tiles[i] !== 0 && d.seen[i] === 0) d.seen[i] = 1;
     };
+    // For scripts/arsenal-shots.mjs: a rolled weapon, and a dummy beside the hero.
+    (window as unknown as { __roll: (kind: MeleeKind | 'bow', level: number, rarity: number) => Item }).__roll = (kind, level, rarity) => rollWeapon(s.rng, kind, level, rarity);
+    (window as unknown as { __dummy: (kind: string, dx: number, dy: number) => void }).__dummy = (kind, dx, dy) => {
+      const e = spawn(s, kind, s.hero.x + dx, s.hero.y + dy, -1, false);
+      e.hp = 1e9;
+      e.maxHp = 1e9;
+      e.mode = 'sleep';
+    };
     // For scripts/loot-check.mjs: every item the run holds, and a rolled item under the hero.
     (window as unknown as { __count: () => number }).__count = () => countItems(s);
-    (window as unknown as { __drop: (kind: 'sword' | 'bow' | 'coat' | 'potion', rarity?: number) => void }).__drop = (kind, rarity = 0) => {
+    (window as unknown as { __drop: (kind: MeleeKind | 'bow' | 'coat' | 'potion', rarity?: number) => void }).__drop = (kind, rarity = 0) => {
       const h = s.hero;
       const it = kind === 'coat' ? rollCoat(s.rng, s.floor, rarity) : kind === 'potion' ? makePotion('heal', s.potionColors) : rollWeapon(s.rng, kind, s.floor, rarity);
       dropItem(s, h.x, h.y, it);
@@ -153,7 +161,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
           if (!id) return { id, name: '', icon: '', cd: 0, ready: false, usable: false };
           const d = NODE_BY_ID[id];
           const cd = (h.cooldowns[id] ?? 0) / d.cooldown;
-          const usable = d.row === 'miekka' ? it?.kind === 'sword' : d.row === 'jousi' ? it?.kind === 'bow' : true;
+          const usable = d.row === 'lahi' ? !!it && isMelee(it.kind) : d.row === 'jousi' ? it?.kind === 'bow' : true;
           return { id, name: t(d.name), icon: d.icon, cd, ready: cd <= 0 && usable, usable };
         }),
         potions: heal?.count ?? 0,
@@ -217,7 +225,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         if (endAcc > (s.won ? 2.6 : 2.2) && !endedRef.current) {
           endedRef.current = true;
           clearSave();
-          onEnd({ floor: s.floor, level: h.level, time: s.time, kills: s.run.kills, build: t(buildName(h.skills)), won: s.won, seed: s.seed });
+          onEnd({ floor: s.floor, level: h.level, time: s.time, kills: s.run.kills, build: t(buildName(h.skills, fighterOf(h))), won: s.won, seed: s.seed });
         }
       }
       if (s.sounds.length) {
@@ -331,9 +339,9 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
                   {t(x.item.name)}
                 </div>
                 <div className="skind">
-                  {x.item.kind === 'sword' ? tr('Miekka', 'Sword') : tr('Jousi', 'Bow')} · {x.item.dmgMin}–{x.item.dmgMax}
+                  {kindName(x.item)} · {x.item.dmgMin}–{x.item.dmgMax}
                 </div>
-                <div className="req">{h.skills[x.item.kind === 'sword' ? 'miekka' : 'jousi'].lvl}</div>
+                <div className="req">{h.skills[isMelee(x.item.kind) ? 'lahi' : 'jousi'].lvl}</div>
               </button>
             ) : (
               <div key={i} className="slot empty">
@@ -381,7 +389,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         ))}
         <button className={`swapbtn ${other ? '' : 'off'}`} style={other ? { borderColor: RARITY_COLOR[other.rarity] } : undefined} onPointerDown={(e) => { e.preventDefault(); if (other) inputRef.current?.swap(); }} aria-hidden={!other} aria-label={other ? tr(`Vaihda: ${t(other.name)}`, `Swap to ${t(other.name)}`) : undefined}>
           <span>⇄</span>
-          {other && <small>{other.kind === 'sword' ? tr('miekka', 'sword') : tr('jousi', 'bow')}</small>}
+          {other && <small>{kindName(other).toLowerCase()}</small>}
         </button>
       </div>
       <div className="stick" ref={moveStickRef}>
@@ -405,7 +413,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
             <div className="lootbody">
               <ItemCard it={it} h={h} />
               <div className="choices">
-                {(it.kind === 'sword' || it.kind === 'bow') &&
+                {isWeapon(it) &&
                   ([0, 1] as const).map((slot) => {
                     const held = h.hands[slot];
                     return <Choice key={slot} title={tr(`Käsi ${slot + 1}`, `Hand ${slot + 1}`)} held={held} it={it} h={h} action={held ? tr(`Vaihda käteen ${slot + 1}: ${t(held.name)} ${dest}`, `Swap into hand ${slot + 1}: ${t(held.name)} ${dest}`) : tr(`Käteen ${slot + 1}`, `Into hand ${slot + 1}`)} onPick={() => { takeInto(s, h, dr, slot, false); done(); }} />;
@@ -429,7 +437,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         <div className="overlay" data-ui>
           <h2>{tr('Tauko', 'Paused')}</h2>
           <p className="small">
-            {tr('Kerros', 'Floor')} {s.floor} · {tr('taso', 'level')} {h.level} · {t(buildName(h.skills))}
+            {tr('Kerros', 'Floor')} {s.floor} · {tr('taso', 'level')} {h.level} · {t(buildName(h.skills, fighterOf(h)))}
           </p>
           <div className="row">
             <button className="btn" onClick={() => openSheet('character')}>

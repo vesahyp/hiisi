@@ -19,6 +19,14 @@ export function enemyStep(s: SimState, e: Enemy, dt: number): void {
   e.hurtFlash = Math.max(0, e.hurtFlash - dt);
   e.alertT = Math.max(0, e.alertT - dt);
   e.cd = Math.max(0, e.cd - dt);
+  e.armorBreak = Math.max(0, e.armorBreak - dt);
+  if (e.bleed.t > 0) {
+    // the axe's wound: a tick every half second
+    const was = e.bleed.t;
+    e.bleed.t = Math.max(0, e.bleed.t - dt);
+    if (Math.floor(was * 2) !== Math.floor(e.bleed.t * 2)) hurtEnemy(s, e, Math.max(1, Math.round(e.bleed.dps / 2)), { skill: null, knock: 0, angle: 0, what: 'vuoto' });
+    if (e.dead) return;
+  }
   const dx = h.x - e.x;
   const dy = h.y - e.y;
   const dist = Math.hypot(dx, dy) || 1;
@@ -27,14 +35,16 @@ export function enemyStep(s: SimState, e: Enemy, dt: number): void {
   // knockback
   if (Math.abs(e.knock.vx) + Math.abs(e.knock.vy) > 1) {
     moveCircle(d, e, e.r, e.knock.vx * dt, e.knock.vy * dt);
-    const k = Math.pow(0.0001, dt);
+    const k = Math.pow(0.002, dt);
     e.knock.vx *= k;
     e.knock.vy *= k;
   }
 
   switch (e.mode) {
     case 'sleep': {
-      if (dist < 2.2 * T || (dist < 5 * T && h.moving && lineOfSight(d, e.x, e.y, h.x, h.y) && s.rng.chance(dt * 0.4))) wake(s, e);
+      // a sleeper wakes to a hero moving close by, with a chance a second;
+      // a hero who stands still beside it is a dagger's chance
+      if (h.moving && dist < 5 * T && lineOfSight(d, e.x, e.y, h.x, h.y) && s.rng.chance(dt * (dist < 2 * T ? 1.5 : 0.4))) wake(s, e);
       return;
     }
     case 'idle': {

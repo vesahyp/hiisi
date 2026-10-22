@@ -26,8 +26,13 @@ export interface HeroInput {
 
 export const NO_INPUT: HeroInput = { mx: 0, my: 0, aiming: false, aimX: 0, aimY: 0, hold: false, attack: false, holdRelease: false, tech: [false, false], potion: false, swap: false, take: false };
 
-/** A sword strike in flight: its arc sweeps over `dur` seconds and hits once. */
+/** A melee strike in flight: its shape sweeps over `dur` seconds and hits once per pass. */
 export interface Swing {
+  /** arc: a wedge of `width` half-angle; line: a bar of `width` half-width; ring: all round */
+  shape: 'arc' | 'line' | 'ring';
+  effect: 'none' | 'bleed' | 'stagger' | 'push' | 'backstab' | 'reap' | 'armorbreak';
+  /** a slam shakes the ground */
+  slam: boolean;
   t: number;
   dur: number;
   angle: number;
@@ -67,9 +72,11 @@ export interface Hero {
   /** potion kinds whose colour the run has shown */
   known: Record<PotionKind, boolean>;
   swing: Swing | null;
-  /** the bow's draw or the sword's wind-up, 0..1, while the hold lasts; the shot or the swing leaves on the release */
+  /** the bow's draw or the weapon's wind-up, 0..1, while the hold lasts; the shot or the swing leaves on the release */
   draw: number;
   drawing: boolean;
+  /** the flail's ball: its angle round the hero and its spin, radians per second */
+  orbit: { a: number; spin: number; hit: Record<number, number> };
   /** the sword held up: seconds held, -1 when down */
   parry: number;
   /** seconds a parry just landed, for the stagger window and the flash */
@@ -125,6 +132,10 @@ export interface Enemy {
   struck: boolean;
   /** the bear's swipes before the next charge */
   swipes: number;
+  /** seconds of bleeding left and the damage a second (the axe) */
+  bleed: { t: number; dps: number };
+  /** seconds of broken armour left: a third more damage taken (the mace's slam) */
+  armorBreak: number;
 }
 
 export interface Projectile {
@@ -139,7 +150,7 @@ export interface Projectile {
   left: number;
   pierce: number;
   hit: Set<number>;
-  kind: 'arrow' | 'enemyArrow' | 'rain';
+  kind: 'arrow' | 'enemyArrow' | 'rain' | 'anchor';
   /** the skill a hero shot trains */
   skill: SkillId | null;
   homing: number;
@@ -181,7 +192,7 @@ export interface FloatText {
 }
 
 export interface Effect {
-  kind: 'slash' | 'hit' | 'blast' | 'rain' | 'stagger' | 'parry' | 'levelup' | 'open';
+  kind: 'slash' | 'thrust' | 'ring' | 'hit' | 'blast' | 'rain' | 'stagger' | 'parry' | 'levelup' | 'open';
   x: number;
   y: number;
   angle: number;
@@ -270,7 +281,7 @@ export function createHero(): Hero {
     level: 1,
     xp: 0,
     points: 0,
-    skills: { miekka: { lvl: 0, hits: 0 }, jousi: { lvl: 0, hits: 0 }, varjo: { lvl: 0, hits: 0 }, tuli: { lvl: 0, hits: 0 }, halla: { lvl: 0, hits: 0 }, henki: { lvl: 0, hits: 0 } },
+    skills: { lahi: { lvl: 0, hits: 0 }, jousi: { lvl: 0, hits: 0 }, varjo: { lvl: 0, hits: 0 }, tuli: { lvl: 0, hits: 0 }, halla: { lvl: 0, hits: 0 }, henki: { lvl: 0, hits: 0 } },
     nodes: {},
     techs: [null, null],
     cooldowns: {},
@@ -282,6 +293,7 @@ export function createHero(): Hero {
     swing: null,
     draw: 0,
     drawing: false,
+    orbit: { a: 0, spin: 0, hit: {} },
     parry: -1,
     parried: 0,
     lock: 0,

@@ -3,11 +3,11 @@ import type { SimState } from '../game/state';
 import type { Renderer } from '../render/renderer';
 import { t, tr } from '../i18n';
 import { buildName, hitsToNext, skillCap, SKILLS, xpToNext } from '../game/skills';
-import { BASE_SPEED, canLearn, canRefund, has, heroStats, learn, refund, setTech } from '../game/hero';
+import { BASE_SPEED, canLearn, canRefund, has, heroStats, learn, refund, setTech, fighterOf } from '../game/hero';
 import { NODE_BY_ID, NODES, ROWS, isTechnique, type RowId } from '../game/content/tree';
-import { RARITY_COLOR, type Item } from '../game/items';
+import { RARITY_COLOR, kindIcon, type Item } from '../game/items';
 import { ItemCard } from './Cards';
-import { drink, dropFromPack, equip, explored, nameOf, PACK_SIZE, stow, swapHands } from '../game/sim';
+import { drink, dropFromPack, equip, explored, nameOf, PACK_SIZE, stow, swapHands, isWeapon } from '../game/sim';
 import { Choice } from './Compare';
 import { fmtTime } from '../records';
 import { audio } from '../audio';
@@ -94,7 +94,7 @@ function Character({ s }: { s: SimState }) {
           </div>
         </div>
         <div className="build">
-          <span>{t(buildName(h.skills))}</span> <small>{tr('tyyli: kaksi korkeinta taitoa', 'the style: the two highest skills')}</small>
+          <span>{t(buildName(h.skills, fighterOf(h)))}</span> <small>{tr('tyyli: kaksi korkeinta taitoa, ase kädessä', 'the style: the two highest skills, the weapon in hand')}</small>
         </div>
         <div className="note">
           <b>{tr('Elämä palaa portailla', 'Health returns on the stairs')}</b>
@@ -307,7 +307,7 @@ function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
     <button key={it ? it.id : label} className={`cell ${it ? `b${it.rarity}` : 'empty'} ${it && sel === it ? 'sel' : ''}`} onClick={() => it && setSel(it)} disabled={!it}>
       {hand !== undefined && it && <span className={`hand ${h.active === hand ? 'on' : ''}`}>{hand + 1}</span>}
       {it && it.kind === 'potion' && it.potion && !h.known[it.potion] && <span className="unk">?</span>}
-      <span className="ic">{it ? (it.kind === 'sword' ? '🗡' : it.kind === 'bow' ? '🏹' : it.kind === 'coat' ? '🧥' : '🧪') : ''}</span>
+      <span className="ic">{it ? kindIcon(it) : ''}</span>
       <small>{it ? nameOf(h, it) : label}</small>
       {it && it.count > 1 && <span className="n">{it.count}</span>}
     </button>
@@ -352,7 +352,7 @@ function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
         {sel ? (
           <>
             <ItemCard it={sel} h={h} />
-            {inPack && (sel.kind === 'sword' || sel.kind === 'bow') && (
+            {inPack && isWeapon(sel) && (
               <div className="choices">
                 {([0, 1] as const).map((slot) => {
                   const held = h.hands[slot];

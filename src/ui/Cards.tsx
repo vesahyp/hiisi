@@ -1,4 +1,5 @@
-import { AFFIX_WHAT, POTION_WHAT, RARITY_COLOR, RARITY_NAME, type Item } from '../game/items';
+import { AFFIX_WHAT, POTION_WHAT, RARITY_COLOR, RARITY_NAME, isMelee, kindName, type Item } from '../game/items';
+import { FAMILY } from '../game/content/weapons';
 import type { Hero } from '../game/state';
 import { nameOf } from '../game/sim';
 import { skillOf } from '../game/hero';
@@ -21,14 +22,11 @@ export function ItemCard({ it, vs, h, compact = false }: { it: Item; vs?: Item |
         {it.count > 1 && <span className="count">×{it.count}</span>}
       </div>
       <div className="isub">
-        {it.kind === 'sword' && tr('Miekka', 'Sword')}
-        {it.kind === 'bow' && tr('Jousi', 'Bow')}
-        {it.kind === 'coat' && tr('Takki', 'Coat')}
-        {it.kind === 'potion' && tr('Juoma', 'Potion')}
+        {kindName(it)}
         {it.kind !== 'potion' && ` · ${t(RARITY_NAME[it.rarity])} · ${tr('kerros', 'floor')} ${it.level}`}
         {it.kind === 'potion' && !known && ` · ${tr('tuntematon', 'unknown')}`}
       </div>
-      {!compact && (it.kind === 'sword' || it.kind === 'bow') && (
+      {!compact && (isMelee(it.kind) || it.kind === 'bow') && (
         <div className="istats">
           <div className={`stat ${vs ? (avg(it) > avg(vs) ? 'up' : avg(it) < avg(vs) ? 'down' : '') : ''}`}>
             <span>{tr('Vahinko', 'Damage')}</span>
@@ -54,7 +52,7 @@ export function ItemCard({ it, vs, h, compact = false }: { it: Item; vs?: Item |
           )}
         </div>
       )}
-      {compact && (it.kind === 'sword' || it.kind === 'bow') && (
+      {compact && (isMelee(it.kind) || it.kind === 'bow') && (
         <div className="istats">
           <div className={`stat ${vs ? (avg(it) > avg(vs) ? 'up' : avg(it) < avg(vs) ? 'down' : '') : ''}`}>
             <span>{tr('Vahinko', 'Damage')}</span>
@@ -81,6 +79,7 @@ export function ItemCard({ it, vs, h, compact = false }: { it: Item; vs?: Item |
           </div>
         </div>
       )}
+      {isMelee(it.kind) && !compact && <div className="itrait family">{t(FAMILY[it.kind].what)}</div>}
       {it.affix && <div className="itrait">{t(AFFIX_WHAT[it.affix])}</div>}
       {it.kind === 'potion' && it.potion && (known ? <div className="itrait">{t(POTION_WHAT[it.potion])}</div> : <div className="itrait unknown">{tr('Juo, niin tiedät. Täydellä elämällä riski on pieni.', 'Drink to find out. With full health the risk is small.')}</div>)}
     </div>

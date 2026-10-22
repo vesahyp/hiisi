@@ -1,5 +1,6 @@
 import { L, t, type Text } from '../i18n';
 import type { Rng } from './rng';
+import { FAMILIES, FAMILY, isMelee, type MeleeKind } from './content/weapons';
 
 /**
  * Items: the weapons the two hands hold, the coat, and potions. A weapon
@@ -7,7 +8,9 @@ import type { Rng } from './rng';
  * unknown kinds carry a colour that the run shuffles; drinking one tells
  * you what that colour is for the rest of the run.
  */
-export type ItemKind = 'sword' | 'bow' | 'coat' | 'potion';
+export type ItemKind = MeleeKind | 'bow' | 'coat' | 'potion';
+export { isMelee };
+export type { MeleeKind };
 export type PotionKind = 'heal' | 'strength' | 'speed' | 'poison';
 export type Affix = 'sharp' | 'quick' | 'long' | 'heavy' | 'piercing' | 'taut' | 'light';
 
@@ -57,7 +60,6 @@ export const POTION_WHAT: Record<PotionKind, Text> = {
   poison: L('Myrkyttää: elämä valuu hetken.', 'Poisons: health drains for a while.'),
 };
 
-const SWORD_BASE: Text[] = [L('miekka', 'sword'), L('säilä', 'blade'), L('kalpa', 'broadsword')];
 const BOW_BASE: Text[] = [L('jousi', 'bow'), L('pitkäjousi', 'longbow'), L('metsästysjousi', 'hunting bow')];
 const COAT_BASE: Text[] = [L('villatakki', 'wool coat'), L('nahkatakki', 'leather coat'), L('turkki', 'fur coat')];
 const RARITY_WORD: Text[] = [L('Ruosteinen', 'Rusty'), L('Kunnon', 'Sound'), L('Hiiden', "Hiisi's"), L('Louhen', "Louhi's"), L('Väinön', "Väinö's")];
@@ -81,7 +83,6 @@ export const AFFIX_WHAT: Record<Affix, Text> = {
   taut: L('jännitys 35 % nopeampi', 'draws 35 % faster'),
   light: L('+10 % kävelyvauhtia', '+10 % walking speed'),
 };
-const SWORD_AFFIX: Affix[] = ['sharp', 'quick', 'long', 'heavy'];
 const BOW_AFFIX: Affix[] = ['sharp', 'quick', 'long', 'piercing', 'taut'];
 
 let nextId = 1;
@@ -109,17 +110,18 @@ const blank = (kind: ItemKind, rarity: number, level: number): Item => ({
   count: 1,
 });
 
-export function rollWeapon(rng: Rng, kind: 'sword' | 'bow', level: number, rarity: number): Item {
+export function rollWeapon(rng: Rng, kind: MeleeKind | 'bow', level: number, rarity: number): Item {
   const it = blank(kind, rarity, level);
-  const base = kind === 'sword' ? rng.pick(SWORD_BASE) : rng.pick(BOW_BASE);
+  const fam = isMelee(kind) ? FAMILY[kind] : null;
+  const base = fam ? rng.pick(fam.bases) : rng.pick(BOW_BASE);
   // damage: the level sets the floor, the rarity the budget
   const scale = (1 + level * 0.18) * (1 + rarity * 0.22);
-  const lo = kind === 'sword' ? 9 : 7;
-  const hi = kind === 'sword' ? 14 : 12;
+  const lo = fam ? fam.lo : 7;
+  const hi = fam ? fam.hi : 12;
   it.dmgMin = Math.round(lo * scale);
   it.dmgMax = Math.round(hi * scale);
   if (rarity >= 2) {
-    it.affix = rng.pick(kind === 'sword' ? SWORD_AFFIX : BOW_AFFIX);
+    it.affix = rng.pick(fam ? fam.affixes : BOW_AFFIX);
     if (it.affix === 'sharp') {
       it.dmgMin = Math.round(it.dmgMin * 1.2);
       it.dmgMax = Math.round(it.dmgMax * 1.2);
@@ -167,7 +169,9 @@ export function rollDrop(rng: Rng, floor: number, colors: Record<PotionKind, str
   }
   const rarity = rollRarity(rng, floor, bonus);
   if (roll < 0.4) return rollCoat(rng, floor, rarity);
-  return rollWeapon(rng, rng.chance(0.5) ? 'sword' : 'bow', floor, rarity);
+  // a bow in a third of the weapons, a melee family by weight in the rest
+  if (rng.chance(0.35)) return rollWeapon(rng, 'bow', floor, rarity);
+  return rollWeapon(rng, rng.weighted(FAMILIES.filter((f) => f.weight > 0), (f) => f.weight).kind, floor, rarity);
 }
 
 export function rollRarity(rng: Rng, floor: number, bonus = 0): number {
@@ -184,5 +188,19 @@ export function weaponScore(it: Item): number {
 }
 
 export function itemLabel(it: Item): string {
-  return it.kind === 'potion' ? t(it.name) : t(it.name);
+  return t(it.name);
+}
+
+/** What kind of thing it is, for the cards and the slots. */
+export function kindName(it: Item): string {
+  if (isMelee(it.kind)) return t(FAMILY[it.kind].name);
+  if (it.kind === 'bow') return t(L('Jousi', 'Bow'));
+  if (it.kind === 'coat') return t(L('Takki', 'Coat'));
+  return t(L('Juoma', 'Potion'));
+}
+
+/** The icon of a kind, for the pack's cells. */
+export function kindIcon(it: Item): string {
+  if (isMelee(it.kind)) return FAMILY[it.kind].icon;
+  return it.kind === 'bow' ? '🏹' : it.kind === 'coat' ? '🧥' : '🧪';
 }

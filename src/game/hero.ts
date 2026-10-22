@@ -1,8 +1,9 @@
 import type { Hero, SimState } from './state';
-import type { Item } from './items';
+import { isMelee, type Item } from './items';
 import { NODE_BY_ID, isTechnique } from './content/tree';
 import { heroMaxHp, hitsToNext, skillCap, skillMul, xpToNext, type SkillId, LEVEL_MAX } from './skills';
-import { t, tr } from '../i18n';
+import { t, tr, type Text } from '../i18n';
+import { FAMILY } from './content/weapons';
 import { say } from './log';
 
 /** The hero's numbers from level, nodes, coat and buffs. */
@@ -41,16 +42,22 @@ export function heroStats(h: Hero): HeroStats {
   const reachMul = has(h, 'ulottuvuus') ? 1.33 : 1;
   // the bow's draw: the node, then the skill, three percent a level; the bow's own speed is in the item
   const drawMul = Math.max(0.45, (has(h, 'nopeaveto') ? 0.7 : 1) * (1 - 0.03 * h.skills.jousi.lvl));
-  const windMul = Math.max(0.45, 1 - 0.03 * h.skills.miekka.lvl);
+  const windMul = Math.max(0.45, 1 - 0.03 * h.skills.lahi.lvl);
   return { maxHp, speed, armor, dmgMul, reachMul, drawMul, windMul };
 }
 
 export const held = (h: Hero): Item | null => h.hands[h.active];
 
+/** The name a melee lead takes: the family in the active hand, else of any melee hand. */
+export function fighterOf(h: Hero): Text | null {
+  const it = h.hands.find((x, i) => x && isMelee(x.kind) && i === h.active) ?? h.hands.find((x) => x && isMelee(x.kind));
+  return it && isMelee(it.kind) ? FAMILY[it.kind].fighter : null;
+}
+
 /** What the hand's skill is. */
 export function skillOf(it: Item | null): SkillId | null {
   if (!it) return null;
-  if (it.kind === 'sword') return 'miekka';
+  if (isMelee(it.kind)) return 'lahi';
   if (it.kind === 'bow') return 'jousi';
   return null;
 }
@@ -60,7 +67,7 @@ export function rollDamage(s: SimState, h: Hero, it: Item, mul = 1): number {
   const sk = skillOf(it);
   const lvl = sk ? h.skills[sk].lvl : 0;
   let m = skillMul(lvl) * heroStats(h).dmgMul * mul;
-  if (sk === 'miekka' && has(h, 'vahva')) m *= 1.15;
+  if (sk === 'lahi' && has(h, 'vahva')) m *= 1.15;
   return Math.round(s.rng.range(it.dmgMin, it.dmgMax) * m);
 }
 
@@ -81,7 +88,7 @@ export function trainSkill(s: SimState, h: Hero, sk: SkillId): void {
 }
 
 const SKILL_NAMES: Record<SkillId, { fi: string; en: string }> = {
-  miekka: { fi: 'Miekka', en: 'Sword' },
+  lahi: { fi: 'Lähitaistelu', en: 'Melee' },
   jousi: { fi: 'Jousi', en: 'Bow' },
   varjo: { fi: 'Varjo', en: 'Shadow' },
   tuli: { fi: 'Tuli', en: 'Fire' },

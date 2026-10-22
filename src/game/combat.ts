@@ -24,6 +24,7 @@ export interface HitSource {
 
 export function hurtEnemy(s: SimState, e: Enemy, dmg: number, src: HitSource): void {
   if (e.dead) return;
+  if (e.armorBreak > 0) dmg = Math.round(dmg * 1.33);
   e.hp -= dmg;
   e.hurtFlash = 0.15;
   wake(s, e, true);

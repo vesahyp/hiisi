@@ -14,10 +14,11 @@
 #   make loot-check    # loot never covers the play area: the chip, the walk, the card, in portrait and a short landscape (shots/loot/)
 #   make icons         # the home-screen PNG icons from public/icon.svg
 #   make screen-check  # the play screen fills an iPhone in landscape, inside its safe area, from the home screen and in Safari (shots/screen/)
+#   make arsenal-shots # each melee family charged with its hit shape showing, landscape (shots/arsenal/)
 #   make floor-shots   # three floors of three seeds, the whole floor revealed on the map sheet, into shots/floors/
 #   make mockups       # re-render the design mockups into public/mockups/shots/
 
-.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check screen-check icons floor-shots mockups
+.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check screen-check icons floor-shots arsenal-shots mockups
 
 dev:
 	npm run dev
@@ -74,6 +75,9 @@ screen-check:
 
 floor-shots:
 	node scripts/floor-shots.mjs
+
+arsenal-shots:
+	node scripts/arsenal-shots.mjs
 
 mockups:
 	node public/mockups/shoot.mjs

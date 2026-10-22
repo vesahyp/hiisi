@@ -1,4 +1,4 @@
-import { AFFIX_WHAT, RARITY_COLOR, type Item } from '../game/items';
+import { AFFIX_WHAT, RARITY_COLOR, isMelee, type Item } from '../game/items';
 import type { Hero } from '../game/state';
 import { nameOf } from '../game/sim';
 import { t, tr } from '../i18n';
@@ -10,13 +10,13 @@ import { t, tr } from '../i18n';
  */
 export function DiffRows({ it, vs }: { it: Item; vs: Item | null }) {
   const rows: { label: string; now: string; was: string; delta: number }[] = [];
-  if (it.kind === 'sword' || it.kind === 'bow') {
+  if (isMelee(it.kind) || it.kind === 'bow') {
     const avg = (x: Item) => (x.dmgMin + x.dmgMax) / 2;
     rows.push({ label: tr('Vahinko', 'Damage'), now: `${it.dmgMin}–${it.dmgMax}`, was: vs ? `${vs.dmgMin}–${vs.dmgMax}` : '', delta: vs ? avg(it) - avg(vs) : 1 });
     const sp = (x: Item) => Math.round((1 - x.speed) * 100);
     if (sp(it) !== (vs ? sp(vs) : 0)) rows.push({ label: tr('Nopeus', 'Speed'), now: `+${sp(it)} %`, was: vs ? `+${sp(vs)} %` : '', delta: sp(it) - (vs ? sp(vs) : 0) });
     const re = (x: Item) => Math.round((x.reach - 1) * 100);
-    if (re(it) !== (vs ? re(vs) : 0)) rows.push({ label: it.kind === 'sword' ? tr('Ulottuvuus', 'Reach') : tr('Kantama', 'Range'), now: `+${re(it)} %`, was: vs ? `+${re(vs)} %` : '', delta: re(it) - (vs ? re(vs) : 0) });
+    if (re(it) !== (vs ? re(vs) : 0)) rows.push({ label: it.kind === 'bow' ? tr('Kantama', 'Range') : tr('Ulottuvuus', 'Reach'), now: `+${re(it)} %`, was: vs ? `+${re(vs)} %` : '', delta: re(it) - (vs ? re(vs) : 0) });
   }
   if (it.kind === 'coat') rows.push({ label: tr('Panssari', 'Armour'), now: String(it.armor), was: vs ? String(vs.armor) : '', delta: vs ? it.armor - vs.armor : 1 });
   const gained = it.affix && it.affix !== vs?.affix ? t(AFFIX_WHAT[it.affix]) : null;

@@ -45,8 +45,9 @@ src/
                           furniture), tile collision that slides round
                           corners, flow field, line of sight, what the hero
                           has seen
-    attacks.ts          the hero's hands: the sword's arc and parry, the
-                          bow's draw and arrows, the techniques, projectiles
+    attacks.ts          the hero's hands: the melee families' shapes and
+                          effects on the release, the guard, the bow's draw
+                          and arrows, the techniques, projectiles
     ai.ts               enemy behaviour: sleep, idle, chase, windup, strike,
                           the bear's charge; traps
     combat.ts           hurtEnemy, hurtHero, kills, experience, drops
@@ -57,6 +58,8 @@ src/
     save.ts             the run at the top of a floor, as JSON; restore
     log.ts              the message log
     content/
+      weapons.ts        the melee families: sword, axe, mace, spear, dagger,
+                          flail, scythe, anchor; shape, effect, rhythm, names
       enemies.ts        the cast: numbers, windups, reach, sight
       tree.ts           every node: row, gate, chain, what it does
   render/
@@ -103,6 +106,10 @@ public/mockups/         the design mockups and their shooter
    calls `step` a whole number of times. Never pass a frame delta into `step`.
 3. **Seeded RNG on the state.** UI and render code never draw from it.
 4. **Content is data.** A new enemy is an `EnemyDef` in `content/enemies.ts`.
+   A new melee family is a `Family` in `content/weapons.ts` plus its
+   branch in `attacks.ts` (`release`, `updateSwing`) and its sprite; one
+   skill, Lähitaistelu, trains every family, so a new weapon costs nothing
+   to pick up.
    A new node is a `NodeDef` in `content/tree.ts`; the sim reads
    `has(hero, id)` where the rule lives. A new affix is an entry in `items.ts`.
 5. **Every hit goes through `hurtEnemy` or `hurtHero`** (`combat.ts`). They

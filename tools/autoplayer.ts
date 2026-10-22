@@ -3,7 +3,7 @@ import { NO_INPUT, type Enemy, type Hero, type HeroInput, type SimState } from '
 import { DT } from '../src/game/sim';
 import { nearestVisible, swordReach, bowRange } from '../src/game/attacks';
 import { canLearn, has, held, learn } from '../src/game/hero';
-import { weaponScore } from '../src/game/items';
+import { isMelee, weaponScore } from '../src/game/items';
 import { NODES, NODE_BY_ID, type RowId } from '../src/game/content/tree';
 import type { Rng } from '../src/game/rng';
 
@@ -21,6 +21,7 @@ export interface Player {
   thumb: number;
   taps: number;
   /** the hand it fights with: the better one, or a style */
+  /** the hand it fights with: the better one, melee, or the bow */
   style: 'best' | 'sword' | 'bow';
 }
 export const BOT: Player = { reaction: 0, thumb: 0, taps: Infinity, style: 'best' };
@@ -87,11 +88,11 @@ function walkTo(s: SimState, h: Hero, x: number, y: number): { dx: number; dy: n
 function wantHand(h: Hero, who: Player, dist: number): number {
   const [a, b] = h.hands;
   if (!a || !b) return a ? 0 : 1;
-  if (who.style === 'sword') return a.kind === 'sword' ? 0 : 1;
+  if (who.style === 'sword') return isMelee(a.kind) ? 0 : 1;
   if (who.style === 'bow') return a.kind === 'bow' ? 0 : 1;
   // the better one, but a sword when they are on top of you
   const best = weaponScore(a) * (a.kind === 'bow' ? 1.15 : 1) >= weaponScore(b) * (b.kind === 'bow' ? 1.15 : 1) ? 0 : 1;
-  if (dist < 1.6 * T) return a.kind === 'sword' ? 0 : b.kind === 'sword' ? 1 : best;
+  if (dist < 1.6 * T) return isMelee(a.kind) ? 0 : isMelee(b.kind) ? 1 : best;
   return best;
 }
 
@@ -182,7 +183,7 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
       const id = h.techs[i];
       if (!id || (h.cooldowns[id] ?? 0) > 0) continue;
       const row = NODE_BY_ID[id].row;
-      if ((row === 'miekka' && it?.kind !== 'sword') || (row === 'jousi' && it?.kind !== 'bow')) continue;
+      if ((row === 'lahi' && !(it && isMelee(it.kind))) || (row === 'jousi' && it?.kind !== 'bow')) continue;
       const near = td < (it?.kind === 'bow' ? 7 * T : 4 * T);
       if (near && sees) inp.tech[i] = true;
     }
@@ -210,7 +211,8 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
         }
         continue;
       }
-      const same = h.hands.find((x) => x?.kind === it.kind) ?? mine;
+      // a weapon of the class it holds: better by worth; a melee of another family counts the same way
+      const same = h.hands.find((x) => x && isMelee(x.kind) === isMelee(it.kind)) ?? mine;
       if (!same || weaponScore(it) > weaponScore(same) * 1.05) {
         wd = dist;
         want = dr;
@@ -224,8 +226,8 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
       } else if (s.time - mem.wantSince > 4) mem.ignore.set(want.id, s.time);
       if (h.near === want.id) {
         const it = want.item!;
-        if (it.kind === 'sword' || it.kind === 'bow') {
-          const slot = h.hands.findIndex((x) => x?.kind === it.kind);
+        if (isMelee(it.kind) || it.kind === 'bow') {
+          const slot = h.hands.findIndex((x) => x && isMelee(x.kind) === isMelee(it.kind));
           if (slot >= 0 && slot !== h.active) inp.swap = true;
           else inp.take = true;
         } else inp.take = true;
@@ -353,11 +355,11 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
 /** The bot spends its points: its row first, then the general row. */
 export function botSpend(s: SimState, h: Hero, who: Player = BOT): void {
   const it = held(h);
-  const pref: RowId = who.style === 'bow' ? 'jousi' : who.style === 'sword' ? 'miekka' : it?.kind === 'bow' ? 'jousi' : 'miekka';
+  const pref: RowId = who.style === 'bow' ? 'jousi' : who.style === 'sword' ? 'lahi' : it?.kind === 'bow' ? 'jousi' : 'lahi';
   let guard = 10;
   while (h.points > 0 && guard-- > 0) {
     let done = false;
-    for (const row of [pref, 'yleinen', pref === 'jousi' ? 'miekka' : 'jousi'] as RowId[]) {
+    for (const row of [pref, 'yleinen', pref === 'jousi' ? 'lahi' : 'jousi'] as RowId[]) {
       for (const n of NODES) {
         if (n.row !== row || !canLearn(s, h, n.id).ok) continue;
         learn(s, h, n.id);

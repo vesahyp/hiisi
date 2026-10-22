@@ -12,7 +12,7 @@ import type { SkillId } from '../skills';
  * A node is either a technique (goes on a button, has a cooldown) or a
  * passive. The sim reads `has(hero, id)` where the rule lives.
  */
-export type RowId = 'miekka' | 'jousi' | 'yleinen' | 'taika' | 'varjo';
+export type RowId = 'lahi' | 'jousi' | 'yleinen' | 'taika' | 'varjo';
 
 export interface NodeDef {
   id: string;
@@ -36,14 +36,14 @@ export interface NodeDef {
 const n = (id: string, row: RowId, skill: SkillId | null, gate: number, after: string | null, side: boolean, icon: string, name: Text, what: Text, cooldown = 0, inSlice = true): NodeDef => ({ id, row, skill, gate, after, side, icon, name, what, cooldown, inSlice });
 
 export const NODES: NodeDef[] = [
-  // the sword
-  n('halkaisu', 'miekka', 'miekka', 1, null, false, '⚔', L('Halkaisu', 'Cleave'), L('Laaja, raskas kaari: osuu kaikkiin edessä puolitoistakertaisella vahingolla.', 'A wide heavy arc: hits everything in front for one and a half times the damage.'), 6),
-  n('vahva', 'miekka', 'miekka', 2, 'halkaisu', true, '✚', L('Vahva käsi', 'Strong arm'), L('+15 % miekan vahinkoa.', '+15 % sword damage.')),
-  n('torjunta', 'miekka', 'miekka', 3, 'halkaisu', false, '🛡', L('Torjunta', 'Parry'), L('Pito torjuu edestä; torjunta iskun hetkellä horjuttaa lyöjän.', 'Hold to block from the front; a block on the moment of the blow staggers the attacker.')),
-  n('ulottuvuus', 'miekka', 'miekka', 5, 'torjunta', true, '↔', L('Ulottuvuus', 'Reach'), L('Miekan kaari kolmanneksen pidempi.', 'The sword arc a third longer.')),
-  n('syoksy', 'miekka', 'miekka', 6, 'torjunta', false, '➶', L('Syöksy', 'Lunge'), L('Syöksy lähimpään viholliseen ja lyö kaksinkertaisesti.', 'Dash to the nearest enemy and strike for double damage.'), 7),
-  n('pyorre', 'miekka', 'miekka', 10, 'syoksy', false, '🌀', L('Pyörre', 'Whirl'), L('Pyörähdys osuu kaikkiin ympärillä kahdesti.', 'A spin hits everything around you twice.'), 10),
-  n('mestari', 'miekka', 'miekka', 15, 'pyorre', false, '★', L('Miekkamestari', 'Sword master'), L('Joka kolmas osuma on kriittinen: kaksinkertainen.', 'Every third hit is critical: double.')),
+  // melee: every family, one skill
+  n('halkaisu', 'lahi', 'lahi', 1, null, false, '⚔', L('Halkaisu', 'Cleave'), L('Aseesi raskas isku: puolitoista kertaa leveämpi ja vahvempi kuin tavallinen.', 'Your weapon\'s heavy blow: half again as wide and as strong as the ordinary one.'), 6),
+  n('vahva', 'lahi', 'lahi', 2, 'halkaisu', true, '✚', L('Vahva käsi', 'Strong arm'), L('+15 % lähitaistelun vahinkoa.', '+15 % melee damage.')),
+  n('torjunta', 'lahi', 'lahi', 3, 'halkaisu', false, '🛡', L('Torjunta', 'Parry'), L('Ladattu miekka tai keihäs torjuu edestä; torjunta iskun hetkellä horjuttaa lyöjän.', 'A wound-up sword or spear blocks from the front; a block on the moment of the blow staggers the attacker.')),
+  n('ulottuvuus', 'lahi', 'lahi', 5, 'torjunta', true, '↔', L('Ulottuvuus', 'Reach'), L('Aseen ulottuvuus kolmanneksen pidempi.', 'The weapon\'s reach a third longer.')),
+  n('syoksy', 'lahi', 'lahi', 6, 'torjunta', false, '➶', L('Syöksy', 'Lunge'), L('Syöksy lähimpään viholliseen ja lyö kaksinkertaisesti.', 'Dash to the nearest enemy and strike for double damage.'), 7),
+  n('pyorre', 'lahi', 'lahi', 10, 'syoksy', false, '🌀', L('Pyörre', 'Whirl'), L('Pyörähdys osuu kaikkiin ympärillä kahdesti.', 'A spin hits everything around you twice.'), 10),
+  n('mestari', 'lahi', 'lahi', 15, 'pyorre', false, '★', L('Asemestari', 'Weapon master'), L('Joka kolmas osuma on kriittinen: kaksinkertainen.', 'Every third hit is critical: double.')),
   // the bow
   n('jannitys', 'jousi', 'jousi', 1, null, false, '🏹', L('Jännitys', 'Draw'), L('Täysi jännitys lävistää rivin ja tekee kaksinkertaisen vahingon.', 'A full draw pierces the row and deals double damage.')),
   n('hiljainen', 'jousi', 'jousi', 2, 'jannitys', true, '🤫', L('Hiljainen jänne', 'Quiet string'), L('Laukaus ei herätä nukkuvia.', 'A shot does not wake sleepers.')),
@@ -73,7 +73,7 @@ export const NODES: NodeDef[] = [
 export const NODE_BY_ID: Record<string, NodeDef> = Object.fromEntries(NODES.map((x) => [x.id, x]));
 
 export const ROWS: { id: RowId; name: Text; skill: SkillId | null; color: string }[] = [
-  { id: 'miekka', name: L('MIEKKA', 'SWORD'), skill: 'miekka', color: '#ffd040' },
+  { id: 'lahi', name: L('LÄHITAISTELU', 'MELEE'), skill: 'lahi', color: '#ffd040' },
   { id: 'jousi', name: L('JOUSI', 'BOW'), skill: 'jousi', color: '#8ae070' },
   { id: 'yleinen', name: L('YLEINEN', 'GENERAL'), skill: null, color: '#ece6d2' },
   { id: 'taika', name: L('TAIKA', 'MAGIC'), skill: 'tuli', color: '#ff7a2a' },

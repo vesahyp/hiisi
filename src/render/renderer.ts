@@ -3,7 +3,8 @@ import { hash2 } from '../game/rng';
 import type { Enemy, Hero, SimState } from '../game/state';
 import { held } from '../game/hero';
 import { swordReach, bowRange } from '../game/attacks';
-import { RARITY_COLOR } from '../game/items';
+import { RARITY_COLOR, isMelee } from '../game/items';
+import { FAMILY } from '../game/content/weapons';
 import { arrowSprite, blit, chestSprite, enemySprite, heroSprite, itemSprite, setSpriteResolution, weaponSprite } from './sprites';
 import { t } from '../i18n';
 
@@ -443,18 +444,32 @@ export class Renderer {
     // the aim: the sword's arc or the bow's line
     if (it && (h.aimShow.on || h.drawing || h.parry >= 0)) {
       const a = h.aimShow.on && Math.hypot(h.aimShow.x, h.aimShow.y) > 0.2 ? Math.atan2(h.aimShow.y, h.aimShow.x) : h.facing;
-      if (it.kind === 'sword') {
+      if (isMelee(it.kind)) {
+        // the hit shape, drawn where it would land: an arc, a thrust line, a ring
+        const f = FAMILY[it.kind];
         const r = swordReach(h, it);
-        ctx.fillStyle = h.parry >= 0 ? 'rgba(200,210,230,0.18)' : 'rgba(255,208,64,0.16)';
-        ctx.beginPath();
-        ctx.moveTo(h.x, h.y);
-        ctx.arc(h.x, h.y, r, a - 1.05, a + 1.05);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = h.parry >= 0 ? 'rgba(200,210,230,0.7)' : 'rgba(255,208,64,0.7)';
+        const slam = f.full === 'slam' && h.draw >= 1;
+        const fill = h.parry >= 0 ? 'rgba(200,210,230,0.18)' : slam ? 'rgba(255,120,60,0.18)' : 'rgba(255,208,64,0.16)';
+        const line = h.parry >= 0 ? 'rgba(200,210,230,0.7)' : slam ? 'rgba(255,120,60,0.8)' : 'rgba(255,208,64,0.7)';
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = line;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(h.x, h.y, r, a - 1.05, a + 1.05);
+        if (f.shape === 'line') {
+          const w = f.width;
+          ctx.save();
+          ctx.translate(h.x, h.y);
+          ctx.rotate(a);
+          ctx.rect(0, -w, r, w * 2);
+          ctx.restore();
+        } else if (f.shape === 'ring' || slam) {
+          ctx.arc(h.x, h.y, slam ? r * 1.4 : r, 0, Math.PI * 2);
+        } else {
+          ctx.moveTo(h.x, h.y);
+          ctx.arc(h.x, h.y, r, a - f.width, a + f.width);
+          ctx.closePath();
+        }
+        ctx.fill();
         ctx.stroke();
       } else {
         const r = bowRange(it);
@@ -477,7 +492,7 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(h.x, h.y, 20, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.strokeStyle = full ? '#ffffff' : it?.kind === 'sword' ? '#ffb060' : '#ffd040';
+      ctx.strokeStyle = full ? '#ffffff' : it && isMelee(it.kind) ? '#ffb060' : '#ffd040';
       ctx.lineWidth = full ? 6 : 5;
       ctx.beginPath();
       ctx.arc(h.x, h.y, 20, -Math.PI / 2, -Math.PI / 2 + h.draw * Math.PI * 2);
@@ -513,7 +528,7 @@ export class Renderer {
         a = h.swing.angle + (f < 0.45 ? -h.swing.width + (f / 0.45) * h.swing.width * 2 : h.swing.width - ((f - 0.45) / 0.55) * h.swing.width * 0.5);
       }
       ctx.rotate(a);
-      blit(ctx, weaponSprite(it), it.kind === 'sword' ? 8 : 6, 0);
+      blit(ctx, weaponSprite(it), isMelee(it.kind) ? 8 : 6, 0);
       ctx.restore();
     }
     if (h.parry >= 0) {
@@ -551,6 +566,22 @@ export class Renderer {
         ctx.lineWidth = 3 + (1 - f) * 4;
         ctx.beginPath();
         ctx.arc(ef.x, ef.y, ef.r * (0.7 + (1 - f) * 0.3), ef.angle - 0.8, ef.angle + 0.8);
+        ctx.stroke();
+        break;
+      case 'thrust':
+        ctx.strokeStyle = ef.color;
+        ctx.lineWidth = 4 + (1 - f) * 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(ef.x, ef.y);
+        ctx.lineTo(ef.x + Math.cos(ef.angle) * ef.r, ef.y + Math.sin(ef.angle) * ef.r);
+        ctx.stroke();
+        break;
+      case 'ring':
+        ctx.strokeStyle = ef.color;
+        ctx.lineWidth = 4 + (1 - f) * 4;
+        ctx.beginPath();
+        ctx.arc(ef.x, ef.y, ef.r * (0.6 + (1 - f) * 0.4), 0, Math.PI * 2);
         ctx.stroke();
         break;
       case 'hit':

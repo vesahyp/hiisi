@@ -7,10 +7,10 @@ import { L, type Text } from '../i18n';
  * to raise a capped skill is the next floor. Low levels take a few hits,
  * so a weapon picked up late catches up in a floor.
  */
-export type SkillId = 'miekka' | 'jousi' | 'varjo' | 'tuli' | 'halla' | 'henki';
+export type SkillId = 'lahi' | 'jousi' | 'varjo' | 'tuli' | 'halla' | 'henki';
 
 export const SKILLS: { id: SkillId; name: Text; icon: string; inSlice: boolean }[] = [
-  { id: 'miekka', name: L('Miekka', 'Sword'), icon: '⚔', inSlice: true },
+  { id: 'lahi', name: L('Lähitaistelu', 'Melee'), icon: '⚔', inSlice: true },
   { id: 'jousi', name: L('Jousi', 'Bow'), icon: '🏹', inSlice: true },
   { id: 'varjo', name: L('Varjo', 'Shadow'), icon: '🐾', inSlice: false },
   { id: 'tuli', name: L('Tuli', 'Fire'), icon: '🔥', inSlice: false },
@@ -52,18 +52,19 @@ export function heroMaxHp(level: number, bonus: number): number {
   return 100 + (level - 1) * 10 + bonus;
 }
 
-/** The build's name from the two highest skills, for the sheet and the record. */
-export function buildName(skills: Record<SkillId, SkillState>): Text {
+/** The build's name from the two highest skills, for the sheet and the record; a melee lead is named by the family in hand. */
+export function buildName(skills: Record<SkillId, SkillState>, fighter: Text | null = null): Text {
   const ranked = (Object.keys(skills) as SkillId[]).filter((k) => skills[k].lvl > 0).sort((a, b) => skills[b].lvl - skills[a].lvl);
   if (!ranked.length) return L('Kulkija', 'Wanderer');
   const [a, b] = ranked;
-  if (!b || skills[b].lvl * 2 < skills[a].lvl) return SOLO[a];
+  const solo = (k: SkillId) => (k === 'lahi' && fighter ? fighter : SOLO[k]);
+  if (!b || skills[b].lvl * 2 < skills[a].lvl) return solo(a);
   const key = [a, b].sort().join('+');
-  return PAIR[key] ?? L(`${SOLO[a].fi}-${SOLO[b].fi.toLowerCase()}`, `${SOLO[a].en} ${SOLO[b].en.toLowerCase()}`);
+  return PAIR[key] ?? L(`${solo(a).fi}-${solo(b).fi.toLowerCase()}`, `${solo(a).en} ${solo(b).en.toLowerCase()}`);
 }
 
 const SOLO: Record<SkillId, Text> = {
-  miekka: L('Miekkamies', 'Swordsman'),
+  lahi: L('Soturi', 'Fighter'),
   jousi: L('Jousimies', 'Archer'),
   varjo: L('Salamurhaaja', 'Assassin'),
   tuli: L('Tulimaagi', 'Fire mage'),
@@ -71,8 +72,8 @@ const SOLO: Record<SkillId, Text> = {
   henki: L('Henkimaagi', 'Spirit mage'),
 };
 const PAIR: Record<string, Text> = {
-  'jousi+miekka': L('Metsästäjä', 'Hunter'),
-  'miekka+tuli': L('Liekkimiekka', 'Flame sword'),
+  'jousi+lahi': L('Metsästäjä', 'Hunter'),
+  'lahi+tuli': L('Liekkimiekka', 'Flame sword'),
   'jousi+varjo': L('Varjojousi', 'Shadow bow'),
-  'miekka+varjo': L('Puukkojunkkari', 'Knife fighter'),
+  'lahi+varjo': L('Salamurhaaja', 'Assassin'),
 };
