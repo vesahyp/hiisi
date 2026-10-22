@@ -172,6 +172,57 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   const b = drawn();
   check('a full draw does more than a tap', b > a * 1.4, `tap ${a}, full ${b}`);
 }
+// ————— the bow's rhythm: a basic bow is no machine gun —————
+{
+  const s = newRun(8);
+  const h = s.hero;
+  arena(s);
+  h.active = 1;
+  const e = spawn(s, 'luuranko', h.x + 4 * T, h.y, -1, false);
+  e.hp = 1e9;
+  h.invuln = 1e9;
+  const shots = (secs: number, input: (i: number) => HeroInput) => {
+    let n = 0;
+    for (let i = 0; i < secs * 60; i++) {
+      s.sounds.length = 0;
+      step(s, input(i), DT);
+      n += s.sounds.filter((x) => x === 'bowshot' || x === 'bowfull').length;
+    }
+    return n;
+  };
+  const spam = shots(10, () => inp({ attack: true }));
+  check('a basic bow tapped every frame fires at most one shot a second', spam <= 11 && spam >= 8, `${spam} shots in 10 s`);
+  h.draw = 0;
+  h.wantShot = false;
+  h.lock = 0;
+  // the hold: draw to full, release, again
+  const held = shots(10, () => inp(h.draw >= 1 ? { holdRelease: true } : { hold: true }));
+  check('a full draw and release cycles about every one and a half seconds', held <= 8 && held >= 5, `${held} full shots in 10 s`);
+  h.draw = 0;
+  h.wantShot = false;
+  h.lock = 0;
+  // a maxed ranger with a taut bow: fast
+  h.skills.jousi.lvl = 20;
+  h.nodes.nopeaveto = true;
+  h.hands[1]!.speed = 0.65;
+  const ranger = shots(10, () => inp({ attack: true }));
+  check('a maxed ranger with a taut bow fires about three shots a second', ranger >= 25 && ranger <= 40, `${ranger} shots in 10 s`);
+  // the sword: a swing time too
+  h.active = 0;
+  h.skills.jousi.lvl = 0;
+  const swings = (secs: number) => {
+    let n = 0;
+    for (let i = 0; i < secs * 60; i++) {
+      s.sounds.length = 0;
+      step(s, inp({ attack: true }), DT);
+      n += s.sounds.filter((x) => x === 'swing').length;
+    }
+    return n;
+  };
+  const sw = swings(10);
+  check('a basic sword tapped every frame swings at most twice a second', sw <= 18 && sw >= 12, `${sw} swings in 10 s`);
+}
+
 // ————— experience and skills —————
 {
   const s = newRun(5);

@@ -38,6 +38,21 @@ export function bowRange(it: Item): number {
   return 9 * T * it.reach;
 }
 
+/** The bow's rhythm: a full draw takes this long; a quick shot leaves at half; after a shot the next draw waits NOCK of it. */
+export const DRAW_TIME = 1.0;
+export const QUICK = 0.5;
+export const NOCK = 0.5;
+export function drawTime(h: Hero, it: Item): number {
+  return DRAW_TIME * it.speed * heroStats(h).drawMul;
+}
+
+/** The sword's rhythm: a swing lasts this long, and the next can start after `swingLock`. */
+export const SWING_TIME = 0.3;
+export const SWING_LOCK = 0.6;
+export function swingLock(h: Hero, it: Item): number {
+  return Math.max(0.25, SWING_LOCK * it.speed * (1 - 0.02 * h.skills.miekka.lvl));
+}
+
 function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
   if (Math.hypot(inp.aimX, inp.aimY) > 0.2) return Math.atan2(inp.aimY, inp.aimX);
   const e = nearestVisible(s, h, range);
@@ -46,10 +61,10 @@ function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
 }
 
 export function startSwing(s: SimState, h: Hero, it: Item, angle: number, o: Partial<Swing> = {}): void {
-  const dur = 0.26 * it.speed;
+  const dur = SWING_TIME * it.speed;
   h.swing = { t: 0, dur, angle, reach: swordReach(h, it), width: 1.05, dmgMul: 1, hit: new Set(), passes: 1, lunge: 10, ...o };
   h.facing = angle;
-  h.lock = 0.4 * it.speed;
+  h.lock = swingLock(h, it);
   h.parry = -1;
   s.sounds.push('swing');
   noise(s, h.x, h.y, 4);
@@ -121,9 +136,10 @@ export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: numbe
   }
   mul = 0;
   h.facing = angle;
-  h.lock = 0.28 * it.speed;
+  h.lock = NOCK * drawTime(h, it);
   h.draw = 0;
   h.drawing = false;
+  h.wantShot = false;
   s.sounds.push(full ? 'bowfull' : 'bowshot');
   if (!has(h, 'hiljainen')) noise(s, h.x, h.y, 6);
 }
@@ -145,44 +161,49 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     s.sounds.push('swap');
   }
   if (!it) return;
-  const st = heroStats(h);
   const sword = it.kind === 'sword';
 
   // the hold verb: the sword up, the bow drawn
-  if (inp.hold && !h.swing && h.lock <= 0 && !h.dash) {
-    if (sword) {
-      if (has(h, 'torjunta')) {
-        if (h.parry < 0) h.parry = 0;
-        else h.parry += dt;
-        if (Math.hypot(inp.aimX, inp.aimY) > 0.2) h.facing = Math.atan2(inp.aimY, inp.aimX);
-        else {
-          const e = nearestVisible(s, h, 4 * T);
-          if (e) h.facing = Math.atan2(e.y - h.y, e.x - h.x);
-        }
+  if (sword) {
+    if (inp.hold && !h.swing && h.lock <= 0 && !h.dash && has(h, 'torjunta')) {
+      if (h.parry < 0) h.parry = 0;
+      else h.parry += dt;
+      if (Math.hypot(inp.aimX, inp.aimY) > 0.2) h.facing = Math.atan2(inp.aimY, inp.aimX);
+      else {
+        const e = nearestVisible(s, h, 4 * T);
+        if (e) h.facing = Math.atan2(e.y - h.y, e.x - h.x);
       }
-    } else {
-      h.drawing = true;
-      h.draw = Math.min(1, h.draw + dt / (0.85 * it.speed * st.drawMul));
-      if (h.draw >= 1 && h.draw - dt / (0.85 * it.speed * st.drawMul) < 1) s.sounds.push('drawfull');
+    } else h.parry = -1;
+    h.drawing = false;
+    h.draw = 0;
+    h.wantShot = false;
+    if (inp.attack && h.lock <= 0 && !h.swing && !h.dash) {
+      const angle = aimAngle(s, h, inp, swordReach(h, it) * 1.6);
+      startSwing(s, h, it, angle);
     }
   } else {
     h.parry = -1;
-    if (!inp.attack && !inp.hold && !inp.holdRelease) {
+    // the bow: a tap queues one shot, which leaves when the draw reaches the
+    // quick mark; a hold draws on toward the full shot and the release fires
+    // it; nothing fires while the last shot is still being nocked
+    if (inp.attack && h.lock <= 0 && !h.dash && !h.wantShot) h.wantShot = true;
+    if (inp.holdRelease && h.lock <= 0 && !h.dash) {
+      if (h.draw >= QUICK) {
+        shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), h.draw);
+      } else h.wantShot = true;
+    }
+    if ((inp.hold || h.wantShot) && h.lock <= 0 && !h.dash) {
+      const before = h.draw;
+      h.drawing = true;
+      h.draw = Math.min(1, h.draw + dt / drawTime(h, it));
+      if (h.draw >= 1 && before < 1) s.sounds.push('drawfull');
+      if (h.wantShot && h.draw >= QUICK) shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), h.draw);
+    } else if (!inp.hold && !h.wantShot) {
       h.drawing = false;
       h.draw = 0;
     }
   }
-  h.aimShow = { on: inp.aiming, x: inp.aimX, y: inp.aimY };
-
-  if ((inp.attack || (inp.holdRelease && !sword)) && h.lock <= 0 && !h.swing && !h.dash) {
-    if (sword) {
-      const angle = aimAngle(s, h, inp, swordReach(h, it) * 1.6);
-      startSwing(s, h, it, angle);
-    } else {
-      const angle = aimAngle(s, h, inp, bowRange(it));
-      shoot(s, h, it, angle, h.draw);
-    }
-  }
+  h.aimShow = { on: inp.aiming, x: inp.aiming ? inp.aimX : h.aimShow.x, y: inp.aiming ? inp.aimY : h.aimShow.y };
 
   for (const i of [0, 1] as const) {
     if (!inp.tech[i]) continue;

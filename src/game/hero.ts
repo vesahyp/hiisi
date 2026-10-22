@@ -37,7 +37,8 @@ export function heroStats(h: Hero): HeroStats {
   const armor = (h.coat?.armor ?? 0) + (has(h, 'nahka') ? 2 : 0);
   const dmgMul = h.buffs.strength > 0 ? 1.4 : 1;
   const reachMul = has(h, 'ulottuvuus') ? 1.33 : 1;
-  const drawMul = (has(h, 'nopeaveto') ? 0.7 : 1) * (held(h)?.affix === 'taut' ? 0.65 : 1);
+  // the bow's draw: the node, then the skill, three percent a level; the bow's own speed is in the item
+  const drawMul = Math.max(0.45, (has(h, 'nopeaveto') ? 0.7 : 1) * (1 - 0.03 * h.skills.jousi.lvl));
   return { maxHp, speed, armor, dmgMul, reachMul, drawMul };
 }
 
