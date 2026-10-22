@@ -107,25 +107,30 @@ public/mockups/         the design mockups and their shooter
    wearFrom, packFrom, equip, stow, swapHands, dropFromPack) keeps
    `countItems`, and the log says where the old thing went. `sim-check`
    asserts it path by path and over two floors of bot play.
-6. **Every enemy attack is slow enough to see.** A windup shows before a
+6. **The pace starts slow and is earned.** `BASE_SPEED` is 105 px/s; the
+   bow and shadow skills, a light coat, the stride node and a speed potion
+   multiply it (`speedMul`), so 170, the first build's pace, is a late
+   ranger's. Enemies, arrows, knockback and the lunge are set to the base
+   pace; scale them with it.
+7. **Every enemy attack is slow enough to see.** A windup shows before a
    strike, the bear's charge draws its lane, enemy arrows fly slowly. The
    proof is `npm run gauntlet`: the human-limited bot must reach floor 3
    with either hand in most runs.
-7. **Skills rise only from hits on enemies that still give experience, and
+8. **Skills rise only from hits on enemies that still give experience, and
    never past the floor's cap** (`skillCap`). That is the rule that makes
    grinding impossible; do not add a way round it.
-8. **The save is the top of a floor.** `nextFloor` snapshots before the
+9. **The save is the top of a floor.** `nextFloor` snapshots before the
    floor spawns (`save.ts`); death clears it. Nothing mid-floor is saved.
-9. **Two languages, English in the code.** Every player-facing string is
+10. **Two languages, English in the code.** Every player-facing string is
    `L(fi, en)` or `tr(fi, en)`.
-10. **A body never catches on a corner.** `moveCircle` slides along walls
+11. **A body never catches on a corner.** `moveCircle` slides along walls
     and nudges round door frames and wall ends; `sim-check` pushes a body
     diagonally into corners and doorways and fails if it stops. Corridors
     are one to three tiles wide; areas are open enough to kite in.
-11. **Nothing in the HUD covers the hero's part of the screen.** Every
+12. **Nothing in the HUD covers the hero's part of the screen.** Every
     element lives in a column at an edge (`docs/loot-ui.md`); `loot-check`
     asserts it in portrait and in a short landscape viewport.
-12. **Prose style:** no em dashes, no "this, not that", no metaphors.
+13. **Prose style:** no em dashes, no "this, not that", no metaphors.
     Commit messages in English.
 
 ## Workflow

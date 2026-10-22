@@ -47,7 +47,7 @@ function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
 
 export function startSwing(s: SimState, h: Hero, it: Item, angle: number, o: Partial<Swing> = {}): void {
   const dur = 0.26 * it.speed;
-  h.swing = { t: 0, dur, angle, reach: swordReach(h, it), width: 1.05, dmgMul: 1, hit: new Set(), passes: 1, lunge: 16, ...o };
+  h.swing = { t: 0, dur, angle, reach: swordReach(h, it), width: 1.05, dmgMul: 1, hit: new Set(), passes: 1, lunge: 10, ...o };
   h.facing = angle;
   h.lock = 0.4 * it.speed;
   h.parry = -1;
@@ -87,7 +87,7 @@ export function updateSwing(s: SimState, h: Hero, dt: number): void {
         crit = true;
       }
       const dmg = rollDamage(s, h, it, mul);
-      hurtEnemy(s, e, dmg, { skill: 'miekka', knock: it.affix === 'heavy' ? 420 : 160, angle: a, crit, what: 'miekka' });
+      hurtEnemy(s, e, dmg, { skill: 'miekka', knock: it.affix === 'heavy' ? 260 : 100, angle: a, crit, what: 'miekka' });
     }
   }
   if (sw.t >= sw.dur) h.swing = null;
@@ -98,7 +98,7 @@ export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: numbe
   let mul = 1 + draw * (has(h, 'jannitys') ? 1 : 0.5);
   const pierce = (full && has(h, 'jannitys')) || it.affix === 'piercing' ? 4 : 0;
   const count = has(h, 'kaksoisnuoli') ? 2 : 1;
-  const sp = 540 + draw * 140;
+  const sp = 330 + draw * 90;
   for (let k = 0; k < count; k++) {
     const a = angle + (count > 1 ? (k === 0 ? -0.07 : 0.07) : 0);
     s.projectiles.push({
@@ -219,7 +219,7 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
       const dx = e.x - h.x;
       const dy = e.y - h.y;
       const dist = Math.hypot(dx, dy) || 1;
-      h.dash = { t: Math.max(0.05, (dist - e.r - 20) / 760), dx: dx / dist, dy: dy / dist, target: e.id };
+      h.dash = { t: Math.max(0.05, (dist - e.r - 20) / 460), dx: dx / dist, dy: dy / dist, target: e.id };
       h.facing = Math.atan2(dy, dx);
       h.invuln = Math.max(h.invuln, h.dash.t + 0.1);
       s.sounds.push('dash');
@@ -316,7 +316,7 @@ export function updateProjectiles(s: SimState, dt: number): void {
           if (e.dead || p.hit.has(e.id)) continue;
           if (Math.hypot(e.x - p.x, e.y - p.y) > e.r + p.r) continue;
           p.hit.add(e.id);
-          hurtEnemy(s, e, p.dmg, { skill: p.skill, knock: 90, angle: Math.atan2(p.vy, p.vx), what: 'nuoli' });
+          hurtEnemy(s, e, p.dmg, { skill: p.skill, knock: 55, angle: Math.atan2(p.vy, p.vx), what: 'nuoli' });
           if (p.pierce > 0) {
             p.pierce--;
             p.dmg = Math.round(p.dmg * 0.85);

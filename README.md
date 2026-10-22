@@ -33,6 +33,11 @@ E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
   oviaukkoon ei tarvitse osua tarkasti.
 - **Jokainen vihollisen isku näkyy ennen kuin se osuu**: punainen kaari
   ennen lyöntiä, viiva ennen nuolta, kaista ennen karhun rynnäkköä.
+- **Vauhti kasvaa kierroksen mittaan.** Alussa kuljet rauhallisesti.
+  Jousen ja varjon taito nostaa kävelyvauhtia, samoin kevyt takki ja
+  Askel-solmu, joten jousimies tai varjo liikkuu loppukierroksella
+  puolitoistakertaisella vauhdilla. Viholliset ja nuolet kulkevat samassa
+  tahdissa, joten taistelu pysyy luettavana.
 - **Taidot nousevat osumista.** Miekka ja jousi nousevat kumpikin omista
   osumistaan vihollisiin, jotka antavat vielä kokemusta. Katto on kerros + 5,
   joten taito nousee katon yli vasta seuraavalla kerroksella. Alhaalta taito

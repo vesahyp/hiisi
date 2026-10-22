@@ -185,7 +185,7 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
   const m = Math.hypot(inp.mx, inp.my);
   h.moving = m > 0.05 && !h.dash;
   if (h.dash) {
-    moveCircle(d, h, h.r, h.dash.dx * 760 * dt, h.dash.dy * 760 * dt);
+    moveCircle(d, h, h.r, h.dash.dx * 460 * dt, h.dash.dy * 460 * dt);
     updateDash(s, h, dt);
   } else if (h.moving) {
     const k = Math.min(1, m);

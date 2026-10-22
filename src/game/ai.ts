@@ -123,7 +123,7 @@ export function enemyStep(s: SimState, e: Enemy, dt: number): void {
       e.cd = e.def.cooldown;
       if (e.def.attack === 'bow') {
         // a slow arrow, the kind you can step out of
-        const sp = 190;
+        const sp = 115;
         const a = Math.atan2(dy, dx) + s.rng.range(-0.05, 0.05);
         s.projectiles.push({ id: s.nextId++, x: e.x + Math.cos(a) * (e.r + 4), y: e.y + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 4, team: 1, dmg: enemyDamage(e), left: e.def.reach + 40, pierce: 0, hit: new Set(), kind: 'enemyArrow', skill: null, homing: 0, dead: false });
         s.sounds.push('bowshot');

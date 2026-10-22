@@ -17,9 +17,22 @@ export interface HeroStats {
 
 export const has = (h: Hero, id: string): boolean => h.nodes[id] === true;
 
+/** The starting walk, px/s. The old pace, 170, is the top end: a ranger or a shadow late in the run. */
+export const BASE_SPEED = 105;
+
+/** How much faster than the start the hero walks: the higher of the bow and shadow skills, a light coat, the stride node, a speed potion. */
+export function speedMul(h: Hero): number {
+  const skill = Math.max(h.skills.jousi.lvl, h.skills.varjo.lvl);
+  let m = 1 + 0.03 * skill;
+  if (has(h, 'askel')) m *= 1.08;
+  if (h.coat?.affix === 'light') m *= 1.1;
+  if (h.buffs.speed > 0) m *= 1.3;
+  return m;
+}
+
 export function heroStats(h: Hero): HeroStats {
   const maxHp = heroMaxHp(h.level, has(h, 'sydan') ? 20 : 0);
-  let speed = 170 * (has(h, 'askel') ? 1.08 : 1) * (h.buffs.speed > 0 ? 1.3 : 1);
+  let speed = BASE_SPEED * speedMul(h);
   if (h.drawing || h.parry >= 0) speed *= 0.55;
   const armor = (h.coat?.armor ?? 0) + (has(h, 'nahka') ? 2 : 0);
   const dmgMul = h.buffs.strength > 0 ? 1.4 : 1;

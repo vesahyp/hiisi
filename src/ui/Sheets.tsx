@@ -3,7 +3,7 @@ import type { SimState } from '../game/state';
 import type { Renderer } from '../render/renderer';
 import { t, tr } from '../i18n';
 import { buildName, hitsToNext, skillCap, SKILLS, xpToNext } from '../game/skills';
-import { canLearn, canRefund, has, heroStats, learn, refund, setTech } from '../game/hero';
+import { BASE_SPEED, canLearn, canRefund, has, heroStats, learn, refund, setTech } from '../game/hero';
 import { NODE_BY_ID, NODES, ROWS, isTechnique, type RowId } from '../game/content/tree';
 import { RARITY_COLOR, type Item } from '../game/items';
 import { ItemCard } from './Cards';
@@ -81,7 +81,7 @@ function Character({ s }: { s: SimState }) {
             {tr('Panssari', 'Armour')} <b>{st.armor}</b>
           </div>
           <div>
-            {tr('Nopeus', 'Speed')} <b>{Math.round((st.speed / 170) * 100)} %</b>
+            {tr('Vauhti', 'Pace')} <b>{Math.round((st.speed / BASE_SPEED) * 100)} %</b>
           </div>
           <div>
             {tr('Tappoja', 'Kills')} <b>{s.run.kills}</b>

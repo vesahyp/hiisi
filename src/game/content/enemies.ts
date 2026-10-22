@@ -34,11 +34,11 @@ export interface EnemyDef {
 }
 
 export const ENEMIES: EnemyDef[] = [
-  { id: 'rotta', name: L('Rotta', 'Rat'), hp: 16, dmg: 7, speed: 175, r: 9, xp: 8, attack: 'bite', windup: 0.35, reach: 26, cooldown: 0.9, sight: 6, minFloor: 1, weight: 4, sleepy: 0.3 },
-  { id: 'hiisi', name: L('Hiisi', 'Hiisi'), hp: 36, dmg: 12, speed: 120, r: 11, xp: 16, attack: 'club', windup: 0.55, reach: 34, cooldown: 1.3, sight: 7, minFloor: 1, weight: 5, sleepy: 0.4 },
-  { id: 'jousihiisi', name: L('Jousihiisi', 'Hiisi archer'), hp: 26, dmg: 10, speed: 110, r: 11, xp: 20, attack: 'bow', windup: 0.7, reach: 260, cooldown: 2.2, sight: 9, minFloor: 2, weight: 2.5, sleepy: 0.3 },
-  { id: 'luuranko', name: L('Luuranko', 'Skeleton'), hp: 56, dmg: 18, speed: 95, r: 12, xp: 28, attack: 'sword', windup: 0.75, reach: 40, cooldown: 1.6, sight: 6, minFloor: 2, weight: 3, sleepy: 0.5 },
-  { id: 'karhu', name: L('Hiiden karhu', "The hill's bear"), hp: 640, dmg: 30, speed: 130, r: 15, xp: 300, attack: 'bear', windup: 0.9, reach: 48, cooldown: 2.0, sight: 12, minFloor: 5, weight: 0, sleepy: 1, boss: true },
+  { id: 'rotta', name: L('Rotta', 'Rat'), hp: 16, dmg: 7, speed: 105, r: 9, xp: 8, attack: 'bite', windup: 0.35, reach: 26, cooldown: 0.9, sight: 6, minFloor: 1, weight: 4, sleepy: 0.3 },
+  { id: 'hiisi', name: L('Hiisi', 'Hiisi'), hp: 36, dmg: 12, speed: 72, r: 11, xp: 16, attack: 'club', windup: 0.55, reach: 34, cooldown: 1.3, sight: 7, minFloor: 1, weight: 5, sleepy: 0.4 },
+  { id: 'jousihiisi', name: L('Jousihiisi', 'Hiisi archer'), hp: 26, dmg: 10, speed: 66, r: 11, xp: 20, attack: 'bow', windup: 0.7, reach: 260, cooldown: 2.2, sight: 9, minFloor: 2, weight: 2.5, sleepy: 0.3 },
+  { id: 'luuranko', name: L('Luuranko', 'Skeleton'), hp: 56, dmg: 18, speed: 57, r: 12, xp: 28, attack: 'sword', windup: 0.75, reach: 40, cooldown: 1.6, sight: 6, minFloor: 2, weight: 3, sleepy: 0.5 },
+  { id: 'karhu', name: L('Hiiden karhu', "The hill's bear"), hp: 640, dmg: 30, speed: 80, r: 15, xp: 300, attack: 'bear', windup: 0.9, reach: 48, cooldown: 2.0, sight: 12, minFloor: 5, weight: 0, sleepy: 1, boss: true },
 ];
 
 export const ENEMY_BY_ID: Record<string, EnemyDef> = Object.fromEntries(ENEMIES.map((e) => [e.id, e]));

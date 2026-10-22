@@ -9,7 +9,7 @@ import type { Rng } from './rng';
  */
 export type ItemKind = 'sword' | 'bow' | 'coat' | 'potion';
 export type PotionKind = 'heal' | 'strength' | 'speed' | 'poison';
-export type Affix = 'sharp' | 'quick' | 'long' | 'heavy' | 'piercing' | 'taut';
+export type Affix = 'sharp' | 'quick' | 'long' | 'heavy' | 'piercing' | 'taut' | 'light';
 
 export const RARITY_COLOR = ['#b8b8b8', '#6ee06e', '#4aa8ff', '#c070ff', '#ff9a2a'];
 export const RARITY_NAME: Text[] = [L('romu', 'junk'), L('tavallinen', 'common'), L('harvinainen', 'rare'), L('eepos', 'epic'), L('legenda', 'legend')];
@@ -70,6 +70,7 @@ export const AFFIX_NAME: Record<Affix, Text> = {
   heavy: L('Raskas', 'Heavy'),
   piercing: L('Lävistävä', 'Piercing'),
   taut: L('Jäntevä', 'Taut'),
+  light: L('Kevyt', 'Light'),
 };
 export const AFFIX_WHAT: Record<Affix, Text> = {
   sharp: L('+20 % vahinkoa', '+20 % damage'),
@@ -78,6 +79,7 @@ export const AFFIX_WHAT: Record<Affix, Text> = {
   heavy: L('osuma työntää vihollisen taakse', 'a hit knocks the enemy back'),
   piercing: L('nuoli lävistää aina', 'every arrow pierces'),
   taut: L('jännitys 35 % nopeampi', 'draws 35 % faster'),
+  light: L('+10 % kävelyvauhtia', '+10 % walking speed'),
 };
 const SWORD_AFFIX: Affix[] = ['sharp', 'quick', 'long', 'heavy'];
 const BOW_AFFIX: Affix[] = ['sharp', 'quick', 'long', 'piercing', 'taut'];
@@ -139,6 +141,11 @@ export function rollCoat(rng: Rng, level: number, rarity: number): Item {
   const base = rng.pick(COAT_BASE);
   it.armor = Math.round(1 + level * 0.6 + rarity * 1.5);
   it.name = L(`${COAT_WORD[rarity].fi} ${base.fi}`, `${COAT_WORD[rarity].en} ${base.en}`);
+  // from blue up, half the coats are light: the pace of a ranger for anyone
+  if (rarity >= 2 && rng.chance(0.5)) {
+    it.affix = 'light';
+    it.name = L(`Kevyt ${COAT_WORD[rarity].fi.toLowerCase()} ${base.fi}`, `Light ${COAT_WORD[rarity].en.toLowerCase()} ${base.en}`);
+  }
   return it;
 }
 
