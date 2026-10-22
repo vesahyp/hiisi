@@ -24,7 +24,7 @@ a { color: var(--gold); }
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding: calc(var(--sat) + 16px) calc(var(--sar) + 16px) calc(var(--sab) + 16px) calc(var(--sal) + 16px); text-align: center; background: radial-gradient(ellipse at 50% 25%, #1c261c 0%, #0b0d0a 70%); overflow-y: auto; }
 .logo { font-size: clamp(64px, 19vw, 120px); font-weight: 900; letter-spacing: 0.08em; line-height: 1; margin: 0; color: var(--gold); background: linear-gradient(#ffe7a0, #e0b048 45%, #9a6a18 55%, #e8c060); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 0 #1a2a10) drop-shadow(0 10px 24px rgba(0,0,0,0.7)); }
 .tagline { color: var(--muted); margin: 10px 0 16px; font-size: 16px; max-width: 340px; }
-@media (orientation: landscape) and (max-height: 500px) { .logo { font-size: 56px; } .tagline { margin: 4px 0 8px; font-size: 14px; } .screen { padding-bottom: calc(var(--sab) + 30px); } }
+@media (orientation: landscape) and (max-height: 500px) { .logo { font-size: 56px; } .tagline { margin: 4px 0 8px; font-size: 14px; } .screen { padding-bottom: calc(var(--sab) + 12px); } .build { position: static; margin-top: 14px; } }
 .credits { margin-top: 24px; font-style: italic; }
 .install { max-width: 420px; font-size: 12px; background: rgba(224,176,72,0.1); border: 1px solid rgba(224,176,72,0.4); border-radius: 10px; padding: 8px 12px; margin: 6px 0; line-height: 1.35; }
 .install b { color: var(--gold); }
