@@ -1,60 +1,125 @@
 # CLAUDE.md
 
-Guidance for AI agents working in this repo. `README.md` is the player page.
-`TODO.md` is forward-looking only.
+Guidance for AI agents working in this repo. `README.md` is the player page:
+what the game is and how to play it. Code, architecture and process notes
+live here. `TODO.md` is forward-looking only.
 
 ## What this is
 
-**Hiisi** (working name) is a NetHack-style action RPG for the phone, played
-like Höyry (`../hoyry`): twin-stick, phones first, Canvas 2D. Experience
-levels, a skill tree, and six skills that improve by use. Bigger levels than
-Höyry's arenas: floors of rooms and corridors.
+**Hiisi** is a NetHack-style action RPG for the browser, phones first,
+played with Höyry's hands: the left thumb walks, the right thumb taps to
+strike or shoot and drags to aim, a hold draws the bow or blocks with the
+sword. Floors of rooms and corridors with a light radius and remembered
+rooms, experience levels, a skill tree, and skills that rise by use. Death
+is death. The design is in `docs/plan.md`, the player research behind it in
+`docs/research.md`, and the design mockups in `public/mockups/` (published
+under `/mockups/`). The architecture is Höyry's (`../hoyry`), which proved
+it on a phone.
 
-**The repo is in the design phase.** There is no game code, and none is
-written until Vesa says yes to `docs/plan.md`. What exists is the plan, the
-research behind it, and static mockups rendered on an emulated iPhone.
+The first slice is live: floors 1 to 5, the sword and the bow, levels, the
+tree's sword, bow and general rows, items, a bear on floor 5.
 
-## Commands
+## Stack
 
-```bash
-make mockups-setup   # once: install Playwright and Chromium
-make mockups         # render every mockup, portrait and landscape, into mockups/shots/
-make serve           # serve mockups/ on http://localhost:5190 for a phone on the LAN
-make check           # the mockups render without page errors
+- **Vite + TypeScript + React.** React renders the menus, the HUD and the
+  sheets. The game itself never goes through React.
+- **Canvas 2D** for the game view. No engine. Sprites are drawn once with
+  canvas paths and cached as images (`src/render/sprites.ts`).
+- **No physics, no ECS.** Enemies, projectiles, drops and traps are plain
+  arrays of objects on `SimState`.
+- **Seeded RNG** (`src/game/rng.ts`, mulberry32). One stream per run, on
+  the sim state. Same seed and same input replay the same run. The stream's
+  position is part of the save.
+
+## Where things live
+
 ```
-
-Deploy is automatic: every push to `main` publishes `mockups/` to GitHub
-Pages (`.github/workflows/deploy.yml`) at https://vesahyp.github.io/hiisi/.
-
-## Layout
-
-```
-docs/
-  plan.md            the one-page plan: loop, decisions, skills and tree,
-                       controls, the first slice, what is cut
-  research.md        what players say about the reference games, with sources
-mockups/
-  index.html         the gallery with the note on what the player decides per screen
-  map.html           the floor view; ?full=1 opens the whole-floor map
-  combat.html        a fight; ?style=sword|bow|magic|shadow
-  tree.html          the skill tree
-  character.html     the character sheet with the use-levels
-  items.html         the pack and the item card
-  scene.js           the static scene painter (tiles, light, sprites, effects)
-  floors.js          the hand-laid floors the scenes are drawn on
-  shared.css         the HUD and screen styles, following Höyry's styles.css
-  shoot.mjs          Playwright: every page on an iPhone 15, both orientations
-  shots/             the rendered PNGs, committed
+src/
+  game/                 the simulation, no DOM anywhere in here
+    state.ts            SimState, Hero, Enemy, HeroInput, createState
+    sim.ts              newRun, startFloor, step(), nextFloor; the stairs,
+                          drops under the hero, the pack, potions
+    dungeon.ts          floor generation (rooms, corridors, doors, stairs),
+                          tile collision, flow field, line of sight, what the
+                          hero has seen
+    attacks.ts          the hero's hands: the sword's arc and parry, the
+                          bow's draw and arrows, the techniques, projectiles
+    ai.ts               enemy behaviour: sleep, idle, chase, windup, strike,
+                          the bear's charge; traps
+    combat.ts           hurtEnemy, hurtHero, kills, experience, drops
+    hero.ts             the hero's numbers, skills by use, levels, the tree
+                          (learn, refund, the buttons)
+    skills.ts           the six skills, the cap, the level curve, the build name
+    items.ts            weapons x rarity x affix, coats, potions and their colours
+    save.ts             the run at the top of a floor, as JSON; restore
+    log.ts              the message log
+    content/
+      enemies.ts        the cast: numbers, windups, reach, sight
+      tree.ts           every node: row, gate, chain, what it does
+  render/
+    renderer.ts         3/4 view, row-sorted walls, the dark, telegraphs,
+                          the minimap
+    sprites.ts          procedural sprite cache
+  input/input.ts        two thumbs (tap, drag, hold) + mouse and keyboard
+  ui/
+    Game.tsx            the game loop (fixed step), HUD, pause, the sheets
+    Sheets.tsx          the character, the tree, the pack, the map
+    Screens.tsx         title, death, records, the guide
+    Cards.tsx           the item card
+    Guide.tsx           how to play, in words
+  audio.ts              Web Audio synth, from Höyry, with Hiisi's sound names
+  records.ts            local records and the saved run, localStorage
+  i18n.ts               fi or en, t()/tr()/L()
+tools/
+  sim-check.ts          npm run sim-check: assertions on the real sim
+  balance.ts            npm run balance: bot runs, one line each
+  gauntlet.ts           npm run gauntlet: the human-limited bot must reach floor 3
+  autoplayer.ts         the bot: BOT and HUMAN profiles, a style per hand
+  dbg/                  probes for a stuck run; not part of a check
+scripts/shots.mjs       make shots: Playwright, iPhone 15, the bot playing
+scripts/phone-run.mjs   make phone-run: the human-limited bot on an emulated
+                          iPhone at real speed, on video
+public/mockups/         the design mockups and their shooter
 ```
 
 ## Rules
 
-1. **No game code before the yes.** The mockup painter draws static scenes;
-   it is not the start of the renderer. When the game starts, it starts from
-   Höyry's architecture (`../hoyry/CLAUDE.md`), and the mockups stay as the
-   design record.
-2. **Two languages, English in the code.** Player-facing text in the mockups
-   is Finnish; docs, identifiers and comments are English.
-3. **Mockups are rendered by the script.** `make mockups` must pass before a commit that touches `mockups/`.
-4. **Prose style:** no em dashes, no "this, not that" constructions, no
-   metaphors, plain words. Commit messages in English.
+1. **The sim is headless.** Nothing under `src/game/` may touch `window`,
+   `document`, React or audio. Sounds are names pushed onto `state.sounds`.
+2. **Fixed step.** `DT = 1/60`. The render loop accumulates real time and
+   calls `step` a whole number of times. Never pass a frame delta into `step`.
+3. **Seeded RNG on the state.** UI and render code never draw from it.
+4. **Content is data.** A new enemy is an `EnemyDef` in `content/enemies.ts`.
+   A new node is a `NodeDef` in `content/tree.ts`; the sim reads
+   `has(hero, id)` where the rule lives. A new affix is an entry in `items.ts`.
+5. **Every hit goes through `hurtEnemy` or `hurtHero`** (`combat.ts`). They
+   own damage, knockback, kills, experience, skill training and drops.
+6. **Every enemy attack is slow enough to see.** A windup shows before a
+   strike, the bear's charge draws its lane, enemy arrows fly slowly. The
+   proof is `npm run gauntlet`: the human-limited bot must reach floor 3
+   with either hand in most runs.
+7. **Skills rise only from hits on enemies that still give experience, and
+   never past the floor's cap** (`skillCap`). That is the rule that makes
+   grinding impossible; do not add a way round it.
+8. **The save is the top of a floor.** `nextFloor` snapshots before the
+   floor spawns (`save.ts`); death clears it. Nothing mid-floor is saved.
+9. **Two languages, English in the code.** Every player-facing string is
+   `L(fi, en)` or `tr(fi, en)`.
+10. **Prose style:** no em dashes, no "this, not that", no metaphors.
+    Commit messages in English.
+
+## Workflow
+
+- `make dev` (http://localhost:5173, also on the LAN for a phone).
+- **Before committing:** `make check` (typecheck, build, `sim-check`,
+  `gauntlet`, `phone-run`) must pass. `phone-run` drives an emulated iPhone,
+  so it needs `make shots-setup` once.
+- **Balance with `make balance [RUNS=6] [STYLE=best|sword|bow] [WHO=bot|human]`.**
+- **URL knobs:** `?seed=N` fixes the run, `?bot=1` plays the bot, `?bot=human`
+  the bot with a person's limits, `?speed=3` runs the sim at three times
+  real time, `?lang=en`.
+- `make shots` / `make shots-en` for phone screenshots.
+- Deploy is automatic: every push to `main` builds and publishes to GitHub
+  Pages at https://vesahyp.github.io/hiisi/.
+- When a change alters what the player sees or does, update `README.md` in
+  player words.

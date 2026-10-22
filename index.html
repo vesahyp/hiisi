@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- maximum-scale and user-scalable stop pinch-zoom from fighting the
+         twin sticks; viewport-fit=cover claims the notch, and the CSS keeps
+         the HUD inside the safe-area insets. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b0d0a" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Hiisi</title>
+    <meta name="description" content="Toimintaroolipeli puhelimelle: laskeudu Hiiden mäkeen kerros kerrallaan, miekalla tai jousella, ja anna taitojen kasvaa siitä mitä teet." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

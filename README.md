@@ -1,12 +1,51 @@
-# Hiisi (työnimi)
+# Hiisi
 
-Toimintaroolipeli puhelimelle: Höyryn kädet, NetHackin kerrokset. Laskeudu
-Hiiden mäkeen kerros kerrallaan, taistele miekalla, jousella, taialla tai
-varjosta, ja anna taitojen kasvaa siitä mitä teet.
+Laskeudu Hiiden mäkeen kerros kerrallaan. Miekka tai jousi kädessä, taidot
+kasvavat siitä mitä teet, ja kuolema on kuolema.
 
-**Peli on suunnitteluvaiheessa.** Mallikuvat ovat osoitteessa
-https://vesahyp.github.io/hiisi/ ja suunnitelma tiedostossa
-[`docs/plan.md`](docs/plan.md). Pelikoodia ei vielä ole.
+**Pelaa: https://vesahyp.github.io/hiisi/**. Toimii puhelimessa ja
+selaimessa. Lisää kotinäytölle, niin se aukeaa koko ruudulle.
 
-*In English: a NetHack-style action RPG for the phone, played like Höyry.
-Design phase: mockups and the plan only.*
+Peli on suomeksi ja englanniksi, kielen valitsee selain. *In English: the
+game follows your browser's language.*
+
+## Miten pelataan
+
+**Puhelimella:** vasen peukalo kävelee. Oikealla peukalolla napautus lyö tai
+ampuu lähintä vihollista jonka näet, veto näyttää tähtäyksen ja laukaisee
+kun nostat sormen, ja pito on aseen toinen verbi: jousi jännittyy, miekka
+torjuu edestä (kun Torjunta on opittu). Kaksi tekniikkanappia oikean
+peukalon yllä tulevat taitopuusta. ⇄ vaihtaa kättä, 🧪 juo
+parannusjuoman. Pienoiskartta avaa koko kerroksen; ☰ avaa hahmon,
+taitopuun ja repun.
+
+**Näppäimistöllä:** WASD kävelee, hiiri tähtää, klikkaus lyö tai ampuu,
+pito jännittää tai torjuu. Q vaihtaa kättä, 1 ja 2 ovat tekniikat, R juo,
+E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
+
+## Kierros
+
+- **Kerros** on huoneita ja käytäviä. Näet valosi verran ja muistat huoneet
+  joissa olet käynyt. Viholliset nukkuvat tai vaeltavat huoneissaan, ja
+  huomaavat sinut kun näkevät sinut.
+- **Jokainen vihollisen isku näkyy ennen kuin se osuu**: punainen kaari
+  ennen lyöntiä, viiva ennen nuolta, kaista ennen karhun rynnäkköä.
+- **Taidot nousevat osumista.** Miekka ja jousi nousevat kumpikin omista
+  osumistaan vihollisiin, jotka antavat vielä kokemusta. Katto on kerros + 5,
+  joten taito nousee katon yli vasta seuraavalla kerroksella. Alhaalta taito
+  nousee nopeasti, joten toisen aseen voi ottaa käteen milloin vain.
+- **Taso antaa taitopisteen.** Taitopuussa on miekan rivi, jousen rivi ja
+  yleinen rivi. Syvemmät solmut vaativat rivin taitoa. Pisteet voi palauttaa
+  kerroksen alussa, ennen ensimmäistä tappoa.
+- **Esineet:** aseet, takit ja juomat. Aseella on harvinaisuus (harmaa,
+  vihreä, sininen, violetti) ja sinisestä ylöspäin yksi ominaisuus. Tuntematon
+  juoma tunnistetaan juomalla. Arkut aukeavat koskemalla.
+- **Portaat** ovat kauimmaisessa huoneessa. Seiso niillä hetki. Elämä palaa
+  portailla, ja kierros tallentuu kerroksen alussa, joten sen voi jatkaa
+  myöhemmin.
+- **Kerroksessa 5 nukkuu karhu** portaiden luona. Väistä rynnäkkö sivulle.
+- **Kuolema päättää kierroksen.** Hahmo jää ennätyksiin syvyyden, tason ja
+  tyylin kanssa. Seuraava hahmo alkaa alusta.
+
+Viipale yksi päättyy kerrokseen 5. Taika, varjo ja syvemmät kerrokset ovat
+tulossa.

@@ -1,16 +1,32 @@
 # TODO
 
 Forward-looking only. Shipped items are deleted; git history is the record.
+The design is in `docs/plan.md`.
 
-## Waiting on Vesa
+## Next
 
-- The name: Hiisi, Louhi or Manala (`docs/plan.md`).
-- Death ends the run (roguelike) or a persistent character (Diablo shape).
-- Yes or no to the first playable slice.
+- Playtest by hand on a phone. The bot clears the slice; a person has to
+  say whether the sword and the bow feel different enough, and whether a
+  windup reads in time on a small screen.
+- A drawn guide, as in Höyry: every control with its own element.
+- The bear: the bot wins against it almost every time. Decide by hand
+  whether the charge needs a second pattern.
 
-## After the yes
+## Slice two: magic
 
-### `first-slice`: floors 1 to 5, sword and bow, levelling
+Staffs as the third hand kind, mana, the fire school (Tulipallo,
+Liekkiseinä), the frost school (Hallanuoli), the spirit school (Suoja,
+Henkiapuri). The tree's magic row opens. Enemies: the frost witch.
 
-The slice in `docs/plan.md`. Starts from Höyry's architecture; ADR 0001
-records what is copied and what is new.
+## Slice three: shadow
+
+Sneaking on half a stick, sight cones, the dagger and the backstab, smoke,
+poison. The tree's shadow row opens.
+
+## Later
+
+- Floors 6 and down, more bosses, a floor theme each.
+- Rings and scrolls, with the same unknown-until-used rule as potions.
+- The global leaderboard, copied from Höyry (`docs/adr/0002` there).
+- The workshop meta between runs.
+- Co-op on one phone.

@@ -1,8 +1,7 @@
 name: Deploy to GitHub Pages
 
-# Publish mockups/ whenever main changes. No build step: the mockups are
-# static pages. When the game exists, this becomes the Vite build deploy
-# from Höyry.
+# Publish a new build whenever main changes, and on demand from the
+# Actions tab. The design mockups ride along under public/mockups/.
 on:
   push:
     branches: [main]
@@ -18,18 +17,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
   deploy:
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: mockups
       - id: deployment
         uses: actions/deploy-pages@v4
