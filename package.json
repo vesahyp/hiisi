@@ -1,0 +1,18 @@
+{
+  "name": "hiisi",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hiisi (working name): a NetHack-style action RPG for the phone, played like Höyry. Design phase: mockups and the plan, no game code yet.",
+  "type": "module",
+  "scripts": {
+    "mockups": "node mockups/shoot.mjs"
+  },
+  "author": "Vesa Hyppönen <vesa.hypponen@gmail.com> (https://github.com/vesahyp)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.0"
+  }
+}

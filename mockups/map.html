@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hiisi: kerros</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* the whole-floor map, opened by a tap on the minimap */
+  .fullmap[hidden] { display: none; }
+  .fullmap { position: absolute; inset: 0; background: rgba(6,8,10,0.86); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: calc(var(--sat) + 12px) 12px calc(var(--sab) + 12px); }
+  .fullmap canvas { height: min(calc(100vh - 170px), calc(94vw * 44 / 56)); width: auto; aspect-ratio: 56 / 44; border: 2px solid rgba(255,255,255,0.15); border-radius: 10px; background: #0a0c0e; }
+  .fullmap .legend { display: flex; gap: 14px; margin-top: 10px; font-size: 12px; color: var(--muted); font-weight: 700; flex-wrap: wrap; justify-content: center; }
+  .fullmap .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+  .fullmap h2 { margin: 0 0 8px; font-size: 18px; color: var(--gold); }
+</style>
+</head>
+<body>
+<canvas class="view" id="view"></canvas>
+
+<div class="hud">
+  <div class="floor">Kerros <b>3</b></div>
+  <div class="lvl">Taso 7 <div class="bar xp"><i style="width:62%"></i></div></div>
+  <div class="bar hp"><i style="width:76%"></i><span>84 / 110</span></div>
+  <div class="bar mana"><i style="width:70%"></i></div>
+</div>
+
+<div class="hands">
+  <div class="slot on b2"><div class="sname r2">Hiidenmiekka</div><div class="skind">Miekka · 14–22</div><div class="req">5</div></div>
+  <div class="slot b1"><div class="sname r1">Jäntevä pitkäjousi</div><div class="skind">Jousi · 9–15</div><div class="req low">4</div></div>
+  <div class="swap">⇄ vaihda</div>
+</div>
+
+<div class="corner">
+  <div class="minimap"><canvas id="mini"></canvas></div>
+  <div class="icon">❚❚</div>
+</div>
+
+<div class="log">
+  <div class="old">Näet portaat alas, kaukana.</div>
+  <div class="hot">Löysit sinisen miekan.</div>
+  <div class="warn">Hiisi huomaa sinut!</div>
+</div>
+
+<div class="techs">
+  <div class="potion">🧪<b>3</b></div>
+  <div class="tech ready" style="--c:#ffd040"><span>⚔</span><small>Halkaisu</small></div>
+  <div class="tech" style="--c:#ffd040; --f:35%"><span>🛡</span><small>Torjunta 4 s</small></div>
+</div>
+
+<div class="thumb" style="left: calc(var(--sal) + 36px); bottom: calc(var(--sab) + 30px);">vasen peukalo: kävely</div>
+<div class="thumb" style="right: calc(var(--sar) + 28px); bottom: calc(var(--sab) + 30px);">oikea: napautus lyö · veto tähtää</div>
+
+<div class="fullmap" id="fullmap" hidden>
+  <h2>Kerros 3 · Hiiden kellarit</h2>
+  <canvas id="big"></canvas>
+  <div class="legend">
+    <span><i style="background:#6ab0ff"></i>sinä</span>
+    <span><i style="background:#ece6d2"></i>portaat</span>
+    <span><i style="background:#a07030"></i>ovi</span>
+    <span><i style="background:#ff6a4a"></i>nähty vihollinen</span>
+    <span><i style="background:#c070ff"></i>nähty esine</span>
+    <span><i style="background:#2a5a7a"></i>vesi</span>
+  </div>
+  <div class="legend" style="margin-top:6px;color:#8ab0a0">Tutkittu 4 huonetta 9:stä · 2 ovea avaamatta · napauta huonetta, niin hahmo kävelee sinne</div>
+</div>
+
+<script type="module">
+  import { drawScene, drawMinimap } from './scene.js';
+  import { FLOOR3 } from './floors.js';
+  const q = new URLSearchParams(location.search);
+  const hero = { x: 25.5, y: 20.5, face: 0.2, style: 'sword', hp: 0.76, hpText: '84' };
+  const explored = [FLOOR3.rooms[0], FLOOR3.rooms[1], FLOOR3.rooms[3], FLOOR3.rooms[4]];
+  const scene = {
+    spec: FLOOR3, hero, explored, lightR: 7,
+    enemies: [
+      { x: 29.5, y: 18.5, kind: 'hiisi', face: Math.PI, aware: true, mark: '!', hp: 1, label: 'Hiisi' },
+      { x: 30.5, y: 22.5, kind: 'rotta', face: Math.PI, hp: 1 },
+      { x: 23.5, y: 11.5, kind: 'luuranko', face: Math.PI / 2, mark: 'z', hp: 1, label: 'Luuranko', known: true },
+    ],
+    items: [
+      { x: 22, y: 22, kind: 'potion', color: '#3a6ad0', rarity: 0 },
+      { x: 24, y: 16, kind: 'sword', rarity: 2 },
+      { x: 28, y: 23, kind: 'coins' },
+      { x: 9, y: 22, kind: 'chest', known: true },
+    ],
+    effects: [
+      { kind: 'stick', at: [70, innerHeight - 120], d: [14, -6] },
+    ],
+  };
+  if (q.get('full') === '1') {
+    document.getElementById('fullmap').hidden = false;
+    document.querySelectorAll('.thumb').forEach((e) => e.remove());
+  }
+  const draw = () => {
+    drawScene(document.getElementById('view'), scene);
+    drawMinimap(document.getElementById('mini'), FLOOR3, explored, hero, {
+      marks: [{ x: 29, y: 18, color: '#ff6a4a' }, { x: 24, y: 16, color: '#c070ff' }],
+    });
+    if (q.get('full') === '1') drawMinimap(document.getElementById('big'), FLOOR3, explored, hero, {
+      bg: '#0a0c0e',
+      marks: [{ x: 29, y: 18, color: '#ff6a4a' }, { x: 30, y: 22, color: '#ff6a4a' }, { x: 24, y: 16, color: '#c070ff' }, { x: 9, y: 22, color: '#e0b048' }, { x: 23, y: 12, color: '#d0503a' }],
+      labels: [{ x: 8, y: 2.5, text: 'ylös' }, { x: 9.5, y: 27.5, text: 'arkku' }, { x: 26, y: 13.5, text: 'ansa' }],
+    });
+  };
+  draw();
+  addEventListener('resize', draw);
+</script>
+</body>
+</html>

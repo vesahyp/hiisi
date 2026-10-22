@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hiisi: hahmo</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .cols { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow: auto; }
+  @media (orientation: landscape) { .cols { flex-direction: row; } .cols > * { flex: 1; } }
+  .who { display: flex; gap: 12px; align-items: center; }
+  .who canvas { width: 56px; height: 56px; border-radius: 12px; background: radial-gradient(circle, rgba(224,176,72,0.2), transparent 70%); flex: none; }
+  .who .n { font-size: 18px; font-weight: 900; }
+  .who .t { font-size: 12px; color: var(--gold); font-style: italic; }
+  .who .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 11px; margin-top: 6px; }
+  .stats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 2px 0; }
+  .stats b { color: #fff; }
+  .skills { display: flex; flex-direction: column; gap: 5px; }
+  .sk { display: grid; grid-template-columns: 22px 118px 1fr 40px; gap: 6px; align-items: center; font-size: 12px; }
+  .sk .ic { font-size: 16px; text-align: center; }
+  .sk .nm { font-weight: 800; }
+  .sk .nm small { display: block; font-weight: 600; color: var(--muted); font-size: 10px; }
+  .sk .lv { font-weight: 900; font-size: 15px; text-align: right; }
+  .sk .lv small { font-size: 10px; color: var(--muted); font-weight: 700; }
+  .sk .up { color: var(--venom); }
+  .sk .capped .lv { color: #ff8a70; }
+  .h { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 6px; }
+  .note { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.3; }
+  .note b { color: var(--ink); }
+  .build { margin-top: 8px; font-size: 12px; }
+  .build span { display: inline-block; padding: 3px 9px; border-radius: 8px; background: rgba(224,176,72,0.15); border: 1px solid rgba(224,176,72,0.5); font-weight: 800; color: var(--gold); margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <h1>Hahmo <small>Kerros 3 · 18:42 pelattu</small></h1>
+  <div class="tabs"><div class="tab on">Hahmo</div><div class="tab">Taitopuu</div><div class="tab">Reppu</div><div class="tab">Kartta</div></div>
+  <div class="cols">
+    <div class="panel">
+      <div class="who">
+        <canvas id="face"></canvas>
+        <div>
+          <div class="n">Ahti</div>
+          <div class="t">Taso 7 · 2 taitopistettä käyttämättä</div>
+          <div class="s">Kokemus 1 240 / 2 000</div>
+          <div class="bar xp" style="width:140px;margin-top:4px"><i style="width:62%"></i></div>
+        </div>
+      </div>
+      <div class="stats">
+        <div>Elämä <b>84 / 110</b></div>
+        <div>Taika <b>30 / 40</b></div>
+        <div>Panssari <b>6</b></div>
+        <div>Nopeus <b>+5 %</b></div>
+        <div>Miekka <b>14–22</b></div>
+        <div>Jousi <b>9–15</b></div>
+        <div>Tappoja <b>61</b></div>
+        <div>Syvin <b>3</b> <small style="color:var(--muted)">(paras 6)</small></div>
+      </div>
+      <div class="build"><span>Liekkimiekka</span> <small style="color:var(--muted)">tyyli: kaksi korkeinta taitoa</small></div>
+      <div class="note"><b>Elämä palaa portailla</b>, ei ajan kanssa. Kuolema päättää kierroksen ja hahmo jää tulostauluun syvyyden ja tyylin kanssa.</div>
+    </div>
+    <div class="panel">
+      <div class="h">TAIDOT · nousevat käytöstä · katto nyt 8</div>
+      <div class="skills">
+        <div class="sk capped"><div class="ic">⚔</div><div class="nm">Miekka<small>+2 tällä kerroksella</small></div><div class="bar skill"><i style="width:100%"></i></div><div class="lv">7 <small>/ 8</small></div></div>
+        <div class="sk"><div class="ic">🏹</div><div class="nm">Jousi<small class="up">nousi juuri: 4 → 5</small></div><div class="bar skill"><i style="width:12%"></i></div><div class="lv">5</div></div>
+        <div class="sk"><div class="ic">🔥</div><div class="nm">Tuli<small>12 osumaa seuraavaan</small></div><div class="bar skill"><i style="width:58%"></i></div><div class="lv">5</div></div>
+        <div class="sk"><div class="ic">❄</div><div class="nm">Halla<small>ei sauvaa</small></div><div class="bar skill"><i style="width:30%"></i></div><div class="lv">1</div></div>
+        <div class="sk"><div class="ic">✨</div><div class="nm">Henki<small>ei käytetty</small></div><div class="bar skill"><i style="width:0%"></i></div><div class="lv">0</div></div>
+        <div class="sk"><div class="ic">🐾</div><div class="nm">Varjo<small>hiipiminen ja tikari</small></div><div class="bar skill"><i style="width:45%"></i></div><div class="lv">2</div></div>
+      </div>
+      <div class="note">Taito nousee vain osumista vihollisiin, jotka antavat vielä kokemusta. Katto on kerros + 5: Miekka 8 aukeaa vasta portaissa alas. <b>Alempi taito nousee nopeasti</b>, joten jousen voi ottaa käteen kerroksella 3 ja olla jousimies kerroksella 6.</div>
+    </div>
+  </div>
+</div>
+<div class="close">✕</div>
+<script>
+  const c = document.getElementById('face'); const dpr = devicePixelRatio || 1; c.width = 64 * dpr; c.height = 64 * dpr; const x = c.getContext('2d'); x.scale(dpr, dpr);
+  x.fillStyle = '#5a5a60'; x.beginPath(); x.roundRect(18, 30, 28, 30, 8); x.fill(); x.fillStyle = '#a83a2a'; x.fillRect(18, 44, 28, 5);
+  x.fillStyle = '#e8c9a0'; x.beginPath(); x.arc(32, 20, 12, 0, 7); x.fill(); x.fillStyle = '#3a2a1a'; x.beginPath(); x.arc(32, 16, 12, Math.PI, 2 * Math.PI); x.fill();
+  x.strokeStyle = '#e0e4e8'; x.lineWidth = 4; x.lineCap = 'round'; x.beginPath(); x.moveTo(48, 50); x.lineTo(60, 26); x.stroke();
+</script>
+</body>
+</html>

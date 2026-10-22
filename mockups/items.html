@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hiisi: reppu</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .cols { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow: auto; }
+  @media (orientation: landscape) { .cols { flex-direction: row; } .cols > * { flex: 1; } }
+  .h { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .worn { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .cell { position: relative; aspect-ratio: 1; border-radius: 10px; border: 2px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 22px; }
+  .cell small { font-size: 8px; font-weight: 800; color: var(--muted); margin-top: 1px; text-align: center; line-height: 1; }
+  .cell.empty { border-style: dashed; opacity: 0.5; }
+  .cell.sel { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.4); }
+  .cell .n { position: absolute; right: 3px; bottom: 2px; font-size: 9px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; }
+  .cell .hand { position: absolute; left: 3px; top: 2px; font-size: 8px; font-weight: 900; color: var(--gold); }
+  .cell .unk { position: absolute; left: 3px; top: 2px; font-size: 9px; font-weight: 900; color: #ff8a70; }
+  .pack { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 4px; }
+  .card { margin-top: 8px; }
+  .card .name { font-size: 15px; font-weight: 900; }
+  .card .kind { font-size: 11px; color: var(--muted); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; font-size: 12px; }
+  .cmp > div { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 6px 8px; }
+  .cmp .t { font-size: 10px; color: var(--muted); font-weight: 800; }
+  .cmp .v { font-weight: 800; }
+  .cmp .v.up { color: var(--venom); }
+  .cmp .v.dn { color: #ff8a70; }
+  .rule { font-size: 12px; margin-top: 6px; color: #ffd870; }
+  .acts { display: flex; gap: 6px; margin-top: 8px; }
+  .acts .btn { flex: 1; padding: 9px 6px; font-size: 13px; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.35; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <h1>Reppu <small>10 / 15 · 48 kolikkoa</small></h1>
+  <div class="tabs"><div class="tab">Hahmo</div><div class="tab">Taitopuu</div><div class="tab on">Reppu</div><div class="tab">Kartta</div></div>
+  <div class="cols">
+    <div class="panel">
+      <div class="h"><span>YLLÄ JA KÄDESSÄ</span><span>napauta: kortti</span></div>
+      <div class="worn">
+        <div class="cell b2"><span class="hand">1</span>🗡<small>Hiidenmiekka</small></div>
+        <div class="cell b1"><span class="hand">2</span>🏹<small>Pitkäjousi</small></div>
+        <div class="cell b0">🥼<small>Villatakki</small></div>
+        <div class="cell empty">💍<small>sormus</small></div>
+      </div>
+      <div class="h" style="margin-top:10px"><span>REPPU</span><span>pidä: pudota</span></div>
+      <div class="pack">
+        <div class="cell b3 sel">🪄<small>Tulisauva</small></div>
+        <div class="cell b1">🪄<small>Hallasauva</small></div>
+        <div class="cell b0">🗡<small>Tikari</small></div>
+        <div class="cell b0">🧪<small>parannus</small><span class="n">3</span></div>
+        <div class="cell b0"><span class="unk">?</span>🧪<small>samea</small><span class="n">1</span></div>
+        <div class="cell b0"><span class="unk">?</span>📜<small>käyrä kirjoitus</small></div>
+        <div class="cell b0">📜<small>paluu</small></div>
+        <div class="cell b0">🔑<small>avain</small></div>
+        <div class="cell b0">🍞<small>leipä</small><span class="n">2</span></div>
+        <div class="cell b2"><span class="unk">?</span>💍<small>hopeinen</small></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="card">
+        <div class="name r3">Hiiden tulisauva</div>
+        <div class="kind">Sauva · Tuli · eepos · löytyi kerroksesta 3</div>
+        <div class="cmp">
+          <div><div class="t">TÄMÄ</div><div class="v">11–19 tulta</div><div class="v">pallo, räjähtää</div><div class="v">6 taikaa / loitsu</div><div class="v up">Tuli 5 · riittää</div></div>
+          <div><div class="t">KÄDESSÄ 1: HIIDENMIEKKA</div><div class="v">14–22</div><div class="v">kaari</div><div class="v">ei taikaa</div><div class="v">Miekka 5 · riittää</div></div>
+        </div>
+        <div class="rule">Eepos-sääntö: joka kolmas pallo jättää palavan lammikon.</div>
+        <div class="acts"><div class="btn primary">Käteen 1</div><div class="btn">Käteen 2</div><div class="btn ghost">Pudota</div></div>
+        <div class="note">Käteen ottaminen vaihtaa tyylin: taika kuluttaa taikapisteitä, ei ammuksia. Tulen käyttötaito nousee osumista. Tuntematon juoma (<b style="color:#ff8a70">?</b>) tunnistetaan juomalla tai lukemalla tunnistuskäärö: se on riski, jonka voi ottaa kun elämä on täynnä.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="close">✕</div>
+</body>
+</html>

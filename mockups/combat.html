@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hiisi: taistelu</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .style-tag { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--sab) + 70px); width: 92%; text-align: center; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.5); letter-spacing: 0.06em; pointer-events: none; text-shadow: 0 1px 3px #000; }
+</style>
+</head>
+<body>
+<canvas class="view" id="view"></canvas>
+<div class="hud">
+  <div class="floor">Kerros <b>3</b></div>
+  <div class="lvl">Taso 7 <div class="bar xp"><i style="width:62%"></i></div></div>
+  <div class="bar hp"><i id="hpbar" style="width:70%"></i><span id="hptext">77 / 110</span></div>
+  <div class="bar mana"><i id="mpbar" style="width:70%"></i></div>
+</div>
+<div class="hands" id="hands"></div>
+<div class="corner"><div class="minimap"><canvas id="mini"></canvas></div><div class="icon">❚❚</div></div>
+<div class="log" id="log"></div>
+<div class="techs" id="techs"></div>
+<div class="thumb" style="left: calc(var(--sal) + 36px); bottom: calc(var(--sab) + 30px);" id="lt"></div>
+<div class="thumb" style="right: calc(var(--sar) + 28px); bottom: calc(var(--sab) + 30px);" id="rt"></div>
+<div class="style-tag" id="tag"></div>
+
+<script type="module">
+  import { drawScene, drawMinimap, COL } from './scene.js';
+  import { CAVE } from './floors.js';
+  const q = new URLSearchParams(location.search);
+  const style = q.get('style') || 'sword';
+  const H = innerHeight;
+  const slot = (cls, name, kind, req, low, on) => `<div class="slot ${on ? 'on' : ''} ${cls}"><div class="sname ${cls.replace('b', 'r')}">${name}</div><div class="skind">${kind}</div><div class="req ${low ? 'low' : ''}">${req}</div></div>`;
+  const tech = (icon, name, c, f, ready, big) => `<div class="tech ${ready ? 'ready' : ''} ${big ? 'big' : ''}" style="--c:${c}; --f:${f}"><span>${icon}</span><small>${name}</small></div>`;
+  const hero = { x: 18.5, y: 15.5, face: 0, style, hp: 0.7, hpText: '77' };
+  const portrait = innerHeight > innerWidth;
+  const base = { spec: CAVE, hero, explored: CAVE.rooms, lightR: 9, get cam() { return portrait ? { x: hero.x + (hero.style === 'bow' ? 4 : 2.5), y: hero.y } : hero; }, items: [{ x: 14, y: 11, kind: 'potion', color: '#c050a0' }, { x: 26, y: 19, kind: 'coins' }], effects: [] };
+  const stick = (dx, dy) => ({ kind: 'stick', at: [70, H - 120], d: [dx, dy] });
+  let scene, log, lt, rt, tag, hands, techs;
+
+  if (style === 'sword') {
+    hero.face = 0.1;
+    scene = { ...base,
+      enemies: [
+        { x: 21.3, y: 15.2, kind: 'hiisi', face: Math.PI, aware: true, hp: 0.55, label: 'Hiisi' },
+        { x: 22.2, y: 17.4, kind: 'hiisi', face: Math.PI, aware: true, hp: 1 },
+        { x: 24, y: 12.5, kind: 'karhu', face: Math.PI, aware: true, hp: 0.9, elite: true, label: 'Raivoisa Karhu' },
+        { x: 10.5, y: 15, kind: 'rotta', face: 0, hp: 1 },
+      ],
+      effects: [
+        { kind: 'arc', r: 2.2, a: 0.1, w: 0.9, color: '#ffd040', under: true },
+        { kind: 'slash', r: 1.9, a: 0.1 },
+        { kind: 'text', at: [21.3, 13.6], text: '18', color: '#fff', size: 15 },
+        { kind: 'text', at: [24, 10.6], text: 'ryntää!', color: '#ff8a70', size: 12 },
+        stick(16, -4),
+      ] };
+    log = `<div class="old">Lyöt hiittä. Hiisi horjuu.</div><div class="warn">Karhu ryntää sinua kohti!</div>`;
+    hands = slot('b2', 'Hiidenmiekka', 'Miekka · 14–22 · kaari', 5, false, true) + slot('b1', 'Jäntevä pitkäjousi', 'Jousi · 9–15', 4, true, false) + `<div class="swap">⇄ vaihda</div>`;
+    techs = `<div class="potion">🧪<b>3</b></div>` + tech('⚔', 'Halkaisu', '#ffd040', '100%', true, true) + tech('🛡', 'Torjunta 2 s', '#ffd040', '60%', false, false);
+    lt = 'vasen: kävele sivuun'; rt = 'oikea: napautus lyö · veto suuntaa · pito torjuu'; tag = 'MIEKKA · kaari osuu kaikkiin edessä · torjunta ajoitetaan ryntäykseen';
+  }
+  if (style === 'bow') {
+    hero.x = 15.5; hero.y = 17.5; hero.face = -0.45;
+    scene = { ...base,
+      enemies: [
+        { x: 23, y: 12.5, kind: 'luuranko', face: Math.PI, aware: true, hp: 0.7, label: 'Luuranko' },
+        { x: 24.5, y: 14, kind: 'luuranko', face: Math.PI, aware: true, hp: 1 },
+        { x: 21, y: 18.5, kind: 'hiisi', face: Math.PI, aware: true, hp: 1, mark: '!' },
+      ],
+      effects: [
+        { kind: 'aim', to: [23, 12.5], r: 12, color: '#ffd040' },
+        { kind: 'charge', f: 0.8 },
+        { kind: 'arrow', at: [19.3, 15.0], a: -0.59 },
+        { kind: 'text', at: [15.5, 20.4], text: 'jännitys 80 %', color: '#ffd870', size: 11 },
+        { kind: 'text', at: [21, 20.6], text: '3 askelta', color: '#ff8a70', size: 11 },
+        stick(-18, 6),
+      ] };
+    log = `<div class="old">Nuoli lävistää luurangon.</div><div class="hot">Jousi 4 → 5.</div>`;
+    hands = slot('b1', 'Jäntevä pitkäjousi', 'Jousi · 9–15 · lävistää', 4, false, true) + slot('b2', 'Hiidenmiekka', 'Miekka · 14–22', 5, false, false) + `<div class="swap">⇄ vaihda</div>`;
+    techs = `<div class="potion">🧪<b>3</b></div>` + tech('🏹', 'Nuolisade', '#ffd040', '100%', true, true) + tech('🪤', 'Ansa', '#8ae070', '100%', true, false);
+    lt = 'vasen: peräänny hiideltä'; rt = 'oikea: pito jännittää, nosto ampuu · napautus ampuu heti'; tag = 'JOUSI · täysi jännitys lävistää rivin · etäisyys on elämä';
+  }
+  if (style === 'magic') {
+    hero.x = 16.5; hero.y = 14.5; hero.face = 0.3; hero.school = 'fire'; hero.mana = 0.45;
+    scene = { ...base,
+      enemies: [
+        { x: 22.5, y: 16.5, kind: 'hiisi', face: Math.PI, aware: true, hp: 0.8 },
+        { x: 23.6, y: 17.6, kind: 'hiisi', face: Math.PI, aware: true, hp: 1 },
+        { x: 22.8, y: 18.9, kind: 'rotta', face: Math.PI, hp: 1 },
+        { x: 24, y: 14.8, kind: 'noita', face: Math.PI, aware: true, hp: 1, elite: true, label: 'Hallanoita' },
+      ],
+      effects: [
+        { kind: 'blast', at: [23, 17.3], r: 2.2, color: COL.ember, under: true },
+        { kind: 'aim', to: [23, 17.3], r: 0, color: COL.ember },
+        { kind: 'bolt', at: [19.8, 15.9], color: COL.ember },
+        { kind: 'pool', at: [17.5, 19.5], r: 1.6, color: COL.frost, under: true },
+        { kind: 'text', at: [17.5, 18.1], text: 'halla hidastaa', color: COL.frost, size: 11 },
+        { kind: 'text', at: [16.5, 17.6], text: 'taika 18 / 40', color: '#9ac8ff', size: 11 },
+        stick(-10, -12),
+      ] };
+    log = `<div class="old">Tulipallo polttaa kolme.</div><div class="warn">Hallanoita loitsii: jää leviää lattialle.</div>`;
+    hands = slot('b3', 'Tulisauva', 'Sauva · Tuli · 11–19 · pallo', 5, false, true) + slot('b1', 'Hallasauva', 'Sauva · Halla · nuoli', 1, true, false) + `<div class="swap">⇄ vaihda</div>`;
+    techs = `<div class="potion">🧪<b>3</b></div>` + tech('🔥', 'Liekkiseinä', COL.ember, '100%', true, true) + tech('✨', 'Suoja 6 s', COL.spirit, '25%', false, false);
+    lt = 'vasen: pidä etäisyys'; rt = 'oikea: napautus loitsii · veto näyttää ympyrän'; tag = 'TAIKA · sauva valitsee koulun · taikapiste rajoittaa, ei ammukset';
+  }
+  if (style === 'shadow') {
+    hero.x = 20.5; hero.y = 17.5; hero.face = -1.2; hero.sneak = true;
+    scene = { ...base, lightR: 5,
+      enemies: [
+        { x: 20.5, y: 13.5, kind: 'hiisi', face: -Math.PI / 2, cone: { r: 5, a: -Math.PI / 2 }, hp: 1, label: 'Hiisi' },
+        { x: 25.5, y: 11.5, kind: 'luuranko', face: Math.PI * 0.8, cone: { r: 5, a: Math.PI * 0.8 }, hp: 1 },
+        { x: 14, y: 11, kind: 'noita', face: 0.3, cone: { r: 6, a: 0.3 }, hp: 1, mark: 'z', label: 'Noita nukkuu' },
+      ],
+      effects: [
+        { kind: 'backstab', at: [20.5, 15.6], text: '×4 selkään' },
+        { kind: 'text', at: [20.5, 20.4], text: 'hiivit · valo pieni', color: COL.shadow, size: 11 },
+        stick(0, -9),
+      ] };
+    log = `<div class="old">Nostit avaimen. Kukaan ei nähnyt.</div><div class="hot">Hiisi ei huomaa sinua.</div>`;
+    hands = slot('b2', 'Myrkkytikari', 'Tikari · 6–9 · myrkky', 3, false, true) + slot('b1', 'Lyhytjousi', 'Jousi · 7–11', 2, false, false) + `<div class="swap">⇄ vaihda</div>`;
+    techs = `<div class="potion">🧪<b>2</b></div>` + tech('🗡', 'Selkäänpuukotus', COL.shadow, '100%', true, true) + tech('💨', 'Savu', COL.shadow, '100%', true, false);
+    lt = 'vasen: puoli tikkua hiipii'; rt = 'oikea: napautus selän takaa puukottaa · näkökartiot näkyvät'; tag = 'VARJO · näkemätön vihollinen on ×4 · savu katkaisee katseen';
+  }
+  document.getElementById('log').innerHTML = log;
+  document.getElementById('hands').innerHTML = hands;
+  document.getElementById('techs').innerHTML = techs;
+  document.getElementById('lt').textContent = lt;
+  document.getElementById('rt').textContent = rt;
+  document.getElementById('tag').textContent = tag;
+  if (style === 'magic') { document.getElementById('mpbar').style.width = '45%'; }
+  const draw = () => { drawScene(document.getElementById('view'), scene); drawMinimap(document.getElementById('mini'), CAVE, CAVE.rooms, hero, { marks: scene.enemies.map((e) => ({ x: Math.floor(e.x), y: Math.floor(e.y), color: '#ff6a4a' })) }); };
+  draw();
+  addEventListener('resize', draw);
+</script>
+</body>
+</html>

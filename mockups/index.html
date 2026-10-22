@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hiisi: mockups</title>
+<style>
+  :root { --bg: #0b0d0a; --ink: #ece6d2; --muted: #a8b09a; --gold: #e0b048; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, sans-serif; padding: 16px; max-width: 900px; margin: 0 auto; line-height: 1.4; }
+  h1 { color: var(--gold); margin: 8px 0 2px; }
+  .lead { color: var(--muted); margin: 0 0 18px; }
+  .card { border: 1px solid rgba(224,176,72,0.3); border-radius: 12px; padding: 12px 14px; margin: 12px 0; background: rgba(24,30,24,0.6); }
+  .card h2 { margin: 0 0 4px; font-size: 17px; }
+  .card p { margin: 4px 0; font-size: 14px; }
+  .card .d { color: var(--muted); }
+  .links a { display: inline-block; margin: 6px 8px 0 0; padding: 8px 12px; border-radius: 8px; background: linear-gradient(#ffd870, #d89a20); color: #2a1800; font-weight: 800; text-decoration: none; font-size: 13px; }
+  .links a.ghost { background: transparent; color: var(--ink); border: 1px solid rgba(236,230,210,0.3); }
+  .shots { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .shots img { height: 150px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); }
+  a { color: #ffd870; }
+</style>
+</head>
+<body>
+<h1>Hiisi (working name): mockups</h1>
+<p class="lead">Static screens of a NetHack-style action RPG for the phone, played like Höyry. Open a screen on a phone to see it at real size; rotate for landscape. Nothing moves and nothing is a game yet. The plan is in <a href="https://github.com/vesahyp/hiisi/blob/main/docs/plan.md">docs/plan.md</a>.</p>
+
+<div class="card">
+  <h2>1. The floor</h2>
+  <p class="d">Rooms and corridors, a light radius, remembered rooms in the dark, a minimap that opens to the whole floor.</p>
+  <p><b>The player decides:</b> which exit to take next, whether to open the door now or clear the hall first, whether the blue sword is worth stepping into the hiisi's reach, and whether the chest behind the water is worth the detour before the stairs.</p>
+  <p class="links"><a href="map.html">Open: floor</a><a href="map.html?full=1" class="ghost">Open: whole floor map</a></p>
+  <div class="shots"><img src="shots/map-portrait.png"><img src="shots/map-full-landscape.png"></div>
+</div>
+
+<div class="card">
+  <h2>2. Combat, one screen per style</h2>
+  <p class="d">The same hands as Höyry: left thumb walks, right thumb taps to hit the nearest enemy or drags to aim. The weapon in the hand sets the style. Two technique buttons from the tree and one potion sit above the right thumb.</p>
+  <p><b>Sword:</b> where to stand so the arc catches both hiisi, and when to hold for the parry against the bear's charge.<br>
+     <b>Bow:</b> how long to hold the draw (a full draw pierces the row) against how many steps the hiisi still needs to reach you.<br>
+     <b>Magic:</b> where to land the fireball circle so it burns three, and whether the mana left is worth a Liekkiseinä or must be saved for Suoja.<br>
+     <b>Shadow:</b> which enemy's back is open to a backstab, which cone to cross, and when to spend the smoke.</p>
+  <p class="links"><a href="combat.html?style=sword">Sword</a><a href="combat.html?style=bow">Bow</a><a href="combat.html?style=magic">Magic</a><a href="combat.html?style=shadow">Shadow</a></p>
+  <div class="shots"><img src="shots/combat-sword-portrait.png"><img src="shots/combat-bow-landscape.png"><img src="shots/combat-magic-landscape.png"><img src="shots/combat-shadow-landscape.png"></div>
+</div>
+
+<div class="card">
+  <h2>3. The skill tree</h2>
+  <p class="d">Four rows, one per style. A node costs one point from a character level, and the deeper nodes also require the style's use-level (the red number). Side nodes are small passives.</p>
+  <p><b>The player decides:</b> where the two unspent points go, and whether to buy deeper in the sword row now or save a point for the magic row that is about to unlock with Tuli 6. The screen also says which nodes the floor cap holds shut, so the player knows what depth will open.</p>
+  <p class="links"><a href="tree.html">Open: tree</a></p>
+  <div class="shots"><img src="shots/tree-portrait.png"><img src="shots/tree-landscape.png"></div>
+</div>
+
+<div class="card">
+  <h2>4. The character</h2>
+  <p class="d">Level and experience, the derived numbers, and the six use-levels with their progress and the floor cap. The two highest skills name the build.</p>
+  <p><b>The player decides:</b> which skill to train on the next floor. Miekka is at the cap, so hits with the sword give nothing until the stairs. Jousi just rose and climbs fast, so this is the floor to shoot. The note on the screen says why switching is cheap.</p>
+  <p class="links"><a href="character.html">Open: character</a></p>
+  <div class="shots"><img src="shots/character-portrait.png"><img src="shots/character-landscape.png"></div>
+</div>
+
+<div class="card">
+  <h2>5. The pack and the item card</h2>
+  <p class="d">Two hands, a coat and a ring slot, a pack of fifteen. A tapped item shows its card beside what is in the hand, the way Höyry's gun pickup does. Unknown potions, scrolls and rings carry a red question mark.</p>
+  <p><b>The player decides:</b> whether the epic fire staff goes into hand 1 (and the sword to the pack), whether to drink the unknown potion now with full health, and what to drop when the pack is full.</p>
+  <p class="links"><a href="items.html">Open: pack</a></p>
+  <div class="shots"><img src="shots/items-portrait.png"><img src="shots/items-landscape.png"></div>
+</div>
+</body>
+</html>
