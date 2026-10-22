@@ -5,7 +5,7 @@ import { heroAttack, updateDash, updateProjectiles, updateSwing } from './attack
 import { enemyStep, separate, springTraps } from './ai';
 import { dropItem } from './combat';
 import { has, held, heroStats } from './hero';
-import { makePotion, POTION_COLORS, resetItemIds, rollDrop, rollWeapon, type Item, type PotionKind, POTION_NAME, POTION_COLOR_NAME } from './items';
+import { makePotion, POTION_COLORS, resetItemIds, rollDrop, rollWeapon, weaponScore, type Item, type PotionKind, POTION_NAME, POTION_COLOR_NAME } from './items';
 import { Rng } from './rng';
 import { t, tr, L } from '../i18n';
 import { say } from './log';
@@ -78,7 +78,7 @@ export function startFloor(s: SimState): void {
     const p = s.rng.pick(spots);
     const loot = [rollDrop(s.rng, s.floor, s.potionColors, 0.15), rollDrop(s.rng, s.floor, s.potionColors, 0.15)];
     if (s.rng.chance(0.5)) loot.push(rollDrop(s.rng, s.floor, s.potionColors, 0.3));
-    s.drops.push({ id: s.nextId++, x: p.x, y: p.y, kind: 'chest', item: null, loot, opened: false, seen: false, life: 0 });
+    s.drops.push({ id: s.nextId++, x: p.x, y: p.y, kind: 'chest', item: null, loot, opened: false, seen: false, judged: false, life: 0 });
   }
   for (let k = 0; k < 2 + Math.floor(s.floor / 2); k++) {
     const room = s.rng.pick(rooms);
@@ -217,7 +217,8 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
   springTraps(s);
   updateProjectiles(s, dt);
 
-  // drops: the thing under the hero; potions and coats jump into the pack
+  // drops: what is plainly better, and every consumable, is taken on the
+  // walk (docs/loot-ui.md); the rest waits under the hero as a chip
   h.near = null;
   let nd = 24;
   for (const dr of s.drops) {
@@ -227,13 +228,11 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
       continue;
     }
     if (!dr.item) continue;
-    if (dist < 20 && dr.item.kind === 'potion') {
-      if (giveItem(s, h, dr.item)) {
-        dr.item = null;
-        continue;
-      }
+    if (dist < 20 && !dr.judged) {
+      dr.judged = true;
+      if (autoTake(s, h, dr)) continue;
     }
-    if (dist < nd) {
+    if (dr.item && dist < nd) {
       nd = dist;
       h.near = dr.id;
     }
@@ -320,36 +319,101 @@ export function takeNear(s: SimState, h: Hero): void {
     return;
   }
   if (it.kind === 'coat') {
-    // worn at once; the old coat lies where this one lay
-    const old = h.coat;
-    h.coat = it;
-    dr.item = old;
-    s.run.items++;
-    s.run.bestRarity = Math.max(s.run.bestRarity, it.rarity);
-    s.sounds.push('take');
-    say(s, tr(`Ylle: ${t(it.name)}.`, `You wear: ${t(it.name)}.`), it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
-    s.drops = s.drops.filter((x) => x.kind === 'chest' || x.item);
+    wearFrom(s, h, dr);
     return;
   }
+  const same = h.hands.findIndex((x) => x?.kind === it.kind);
   const empty = h.hands[0] === null ? 0 : h.hands[1] === null ? 1 : -1;
-  const slot = empty >= 0 ? empty : h.active;
-  const old = h.hands[slot];
-  h.hands[slot] = it;
-  h.active = slot;
-  dr.item = old;
-  if (old) {
-    dr.x = h.x + 10;
-    dr.y = h.y + 10;
+  const slot = empty >= 0 ? empty : same >= 0 ? same : h.active;
+  takeInto(s, h, dr, slot, false);
+}
+
+/**
+ * The rule for a drop under the hero, written in docs/loot-ui.md so Höyry
+ * can share it: a potion joins the pack; a coat with more armour is worn;
+ * a weapon into an empty hand, or in place of the same kind when it is
+ * plainly better (a sixth more worth). The replaced thing goes into the
+ * pack when there is room, else it lies where the new one lay, so nothing
+ * is lost and the walk is never stopped. True when the drop was taken.
+ */
+export function autoTake(s: SimState, h: Hero, dr: SimState['drops'][number]): boolean {
+  const it = dr.item;
+  if (!it) return false;
+  if (it.kind === 'potion') {
+    if (giveItem(s, h, it)) {
+      dr.item = null;
+      return true;
+    }
+    return false;
   }
-  h.swing = null;
-  h.draw = 0;
-  h.drawing = false;
+  if (it.kind === 'coat') {
+    if (h.coat && h.coat.armor >= it.armor) return false;
+    wearFrom(s, h, dr);
+    return true;
+  }
+  const same = h.hands.findIndex((x) => x?.kind === it.kind);
+  const empty = h.hands[0] === null ? 0 : h.hands[1] === null ? 1 : -1;
+  if (empty >= 0 && same < 0) {
+    takeInto(s, h, dr, empty, true);
+    return true;
+  }
+  if (same >= 0 && weaponScore(it) > weaponScore(h.hands[same]!) * 1.15) {
+    takeInto(s, h, dr, same, true);
+    return true;
+  }
+  return false;
+}
+
+/** The coat from a drop onto the hero; the old one into the pack or onto the floor. */
+export function wearFrom(s: SimState, h: Hero, dr: SimState['drops'][number]): void {
+  const it = dr.item;
+  if (!it || it.kind !== 'coat') return;
+  const old = h.coat;
+  h.coat = it;
+  dr.item = null;
+  if (old && h.pack.length < PACK_SIZE) h.pack.push(old);
+  else if (old) dr.item = old;
   s.run.items++;
   s.run.bestRarity = Math.max(s.run.bestRarity, it.rarity);
   s.sounds.push('take');
-  say(s, tr(`Käteen: ${t(it.name)}.`, `In hand: ${t(it.name)}.`), it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
+  say(s, tr(`Ylle: ${t(it.name)}.`, `You wear: ${t(it.name)}.`), it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
   s.drops = s.drops.filter((x) => x.kind === 'chest' || x.item);
 }
+
+/** A weapon from a drop into hand `slot`; the old one into the pack or onto the floor. */
+export function takeInto(s: SimState, h: Hero, dr: SimState['drops'][number], slot: number, auto: boolean): void {
+  const it = dr.item;
+  if (!it || (it.kind !== 'sword' && it.kind !== 'bow')) return;
+  const old = h.hands[slot];
+  h.hands[slot] = it;
+  if (!auto) h.active = slot;
+  dr.item = null;
+  if (old && h.pack.length < PACK_SIZE) h.pack.push(old);
+  else if (old) dr.item = old;
+  if (slot === h.active) {
+    h.swing = null;
+    h.draw = 0;
+    h.drawing = false;
+  }
+  s.run.items++;
+  s.run.bestRarity = Math.max(s.run.bestRarity, it.rarity);
+  s.sounds.push('take');
+  const where = tr(`käsi ${slot + 1}`, `hand ${slot + 1}`);
+  say(s, auto ? tr(`Parempi: ${t(it.name)} (${where}).`, `Better: ${t(it.name)} (${where}).`) : tr(`Käteen ${slot + 1}: ${t(it.name)}.`, `Hand ${slot + 1}: ${t(it.name)}.`), it.rarity >= 2 ? '#c070ff' : '#b8c8a8');
+  s.drops = s.drops.filter((x) => x.kind === 'chest' || x.item);
+}
+
+/** From the chip's card: the drop into the pack. */
+export function packFrom(s: SimState, h: Hero, dr: SimState['drops'][number]): boolean {
+  const it = dr.item;
+  if (!it) return false;
+  if (!giveItem(s, h, it)) return false;
+  dr.item = null;
+  s.drops = s.drops.filter((x) => x.kind === 'chest' || x.item);
+  return true;
+}
+
+
 
 /** The potion button: the first healing potion in the pack. */
 export function drinkHeal(s: SimState, h: Hero): void {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { DT, step, takeNear } from '../game/sim';
+import { DT, step, takeInto, wearFrom, packFrom } from '../game/sim';
 import type { SimState } from '../game/state';
 import { Renderer } from '../render/renderer';
 import { InputController } from '../input/input';
@@ -7,7 +7,8 @@ import { audio } from '../audio';
 import { Rng } from '../game/rng';
 import { botInput, botSpend, BOT, HUMAN } from '../../tools/autoplayer';
 import { t, tr } from '../i18n';
-import { RARITY_COLOR, type Item } from '../game/items';
+import { RARITY_COLOR, makePotion, rollCoat, rollWeapon, type Item } from '../game/items';
+import { dropItem } from '../game/combat';
 import { NODE_BY_ID } from '../game/content/tree';
 import { held, heroStats } from '../game/hero';
 import { xpToNext, buildName } from '../game/skills';
@@ -45,7 +46,7 @@ interface Hud {
   buffs: string[];
 }
 
-type Overlay = { kind: 'none' } | { kind: 'pause' } | { kind: 'sheet'; tab: Tab } | { kind: 'guide' };
+type Overlay = { kind: 'none' } | { kind: 'pause' } | { kind: 'sheet'; tab: Tab } | { kind: 'guide' } | { kind: 'loot'; id: number };
 
 function ConfirmButton({ className, label, sure, onConfirm }: { className: string; label: string; sure: string; onConfirm: () => void }) {
   const [armed, setArmed] = useState(false);
@@ -86,6 +87,12 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
     const canvas = canvasRef.current!;
     const root = rootRef.current!;
     (window as unknown as { __sim: SimState }).__sim = s;
+    // For scripts/loot-check.mjs: lay a rolled item under the hero.
+    (window as unknown as { __drop: (kind: 'sword' | 'bow' | 'coat' | 'potion', rarity?: number) => void }).__drop = (kind, rarity = 0) => {
+      const h = s.hero;
+      const it = kind === 'coat' ? rollCoat(s.rng, s.floor, rarity) : kind === 'potion' ? makePotion('heal', s.potionColors) : rollWeapon(s.rng, kind, s.floor, rarity);
+      dropItem(s, h.x, h.y, it);
+    };
     const renderer = new Renderer(canvas);
     rendererRef.current = renderer;
     s.view = renderer.view();
@@ -240,7 +247,6 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
   }, []);
 
   const h = s.hero;
-  const active = hud?.hands.find((x) => x.active)?.item ?? null;
   const other = hud?.hands.find((x) => !x.active)?.item ?? null;
   const openSheet = (tab: Tab) => setOverlay({ kind: 'sheet', tab });
 
@@ -327,13 +333,20 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         </div>
       )}
 
-      {hud?.near && (
-        <div className="pickup">
-          <ItemCard it={hud.near} vs={hud.nearVs} h={h} compact />
-          <button className="btn primary take" data-ui onClick={() => (inputRef.current ? inputRef.current.take() : takeNear(s, h))}>
-            {hud.near.kind === 'sword' || hud.near.kind === 'bow' ? (active && active.kind === hud.near.kind ? tr('Vaihda käteen', 'Swap into hand') : tr('Ota käteen', 'Take in hand')) : hud.near.kind === 'coat' ? tr('Pue', 'Wear') : tr('Ota', 'Take')} <small>E</small>
-          </button>
-        </div>
+      {/* What the walk-over rule left under the hero: one line in the left
+          column, out of the play area (docs/loot-ui.md). A tap opens the
+          comparison as a paused overlay; E takes it into the hand of its kind. */}
+      {hud?.near && h.near !== null && (
+        <button className="lootchip" data-ui style={{ borderColor: RARITY_COLOR[hud.near.rarity] }} onClick={() => setOverlay({ kind: 'loot', id: h.near! })}>
+          <span className="lname" style={{ color: RARITY_COLOR[hud.near.rarity] }}>
+            {t(hud.near.name)}
+          </span>
+          <span className="lnum">
+            {hud.near.kind === 'coat' ? `${tr('panssari', 'armour')} ${hud.near.armor}${hud.nearVs ? ` (${hud.nearVs.armor})` : ''}` : `${hud.near.dmgMin}–${hud.near.dmgMax}${hud.nearVs ? ` (${hud.nearVs.dmgMin}–${hud.nearVs.dmgMax})` : ''}`}
+            {' · '}
+            {tr('napauta', 'tap')}
+          </span>
+        </button>
       )}
 
       <div className="techs" data-ui>
@@ -352,7 +365,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
             aria-label={x.name || tr('Tyhjä tekniikka', 'Empty technique')}
           >
             <span>{x.icon || (i + 1)}</span>
-            <small>{x.name || tr('tekniikka', 'technique')}</small>
+            {x.name && <small>{x.name}</small>}
           </button>
         ))}
         <button className={`swapbtn ${other ? '' : 'off'}`} style={other ? { borderColor: RARITY_COLOR[other.rarity] } : undefined} onPointerDown={(e) => { e.preventDefault(); if (other) inputRef.current?.swap(); }} aria-hidden={!other} aria-label={other ? tr(`Vaihda: ${t(other.name)}`, `Swap to ${t(other.name)}`) : undefined}>
@@ -368,6 +381,51 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
       </div>
 
       {overlay.kind === 'sheet' && rendererRef.current && <Sheets s={s} tab={overlay.tab} renderer={rendererRef.current} onTab={(tab) => setOverlay({ kind: 'sheet', tab })} onClose={() => setOverlay({ kind: 'none' })} onChange={() => setTick((x) => x + 1)} />}
+      {overlay.kind === 'loot' && (() => {
+        const dr = s.drops.find((x) => x.id === overlay.id);
+        const it = dr?.item;
+        if (!dr || !it) return null;
+        const vs = it.kind === 'coat' ? h.coat : (h.hands.find((x) => x?.kind === it.kind) ?? null);
+        const done = () => setOverlay({ kind: 'none' });
+        return (
+          <div className="overlay loot" data-ui>
+            <h2>{tr('Lattialla', 'On the floor')}</h2>
+            <div className="lootcard">
+              <ItemCard it={it} vs={vs} h={h} />
+              {vs && (
+                <div className="lootvs">
+                  <div className="small">{it.kind === 'coat' ? tr('Ylläsi', 'Worn') : tr('Kädessä', 'In hand')}</div>
+                  <ItemCard it={vs} h={h} compact />
+                </div>
+              )}
+            </div>
+            <div className="row">
+              {(it.kind === 'sword' || it.kind === 'bow') && (
+                <>
+                  <button className="btn primary" onClick={() => { takeInto(s, h, dr, 0, false); done(); }}>
+                    {tr('Käteen 1', 'Hand 1')}
+                  </button>
+                  <button className="btn" onClick={() => { takeInto(s, h, dr, 1, false); done(); }}>
+                    {tr('Käteen 2', 'Hand 2')}
+                  </button>
+                </>
+              )}
+              {it.kind === 'coat' && (
+                <button className="btn primary" onClick={() => { wearFrom(s, h, dr); done(); }}>
+                  {tr('Pue', 'Wear')}
+                </button>
+              )}
+              <button className="btn" onClick={() => { packFrom(s, h, dr); done(); }}>
+                {tr('Reppuun', 'To the pack')}
+              </button>
+              <button className="btn ghost" onClick={done}>
+                {tr('Jätä', 'Leave it')}
+              </button>
+            </div>
+            <p className="small">{tr('Selvästi paremmat aseet ja takit sekä juomat tulevat mukaan kävellen. Tämä jäi, koska se ei ole parempi.', 'Plainly better weapons and coats, and every potion, are taken on the walk. This one waited because it is not better.')}</p>
+          </div>
+        );
+      })()}
       {overlay.kind === 'pause' && (
         <div className="overlay" data-ui>
           <h2>{tr('Tauko', 'Paused')}</h2>

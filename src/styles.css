@@ -90,8 +90,10 @@ table.records .n { text-align: right; }
 @media (orientation: landscape) and (max-height: 500px) { .banner { top: 30%; } .banner .t { font-size: 24px; } .banner .s { font-size: 12px; } }
 
 /* the message log */
-.log { position: absolute; left: calc(var(--sal) + 172px); right: calc(var(--sar) + 150px); top: calc(var(--sat) + 8px); pointer-events: none; text-align: center; font-size: 12px; font-weight: 700; text-shadow: 0 1px 3px #000, 0 0 8px #000; line-height: 1.35; }
-@media (orientation: portrait) { .log { left: 8px; right: 8px; top: calc(var(--sat) + 190px); } }
+.log { position: absolute; left: calc(var(--sal) + 10px); width: 150px; top: calc(var(--sat) + 232px); pointer-events: none; text-align: left; font-size: 11px; font-weight: 700; text-shadow: 0 1px 3px #000, 0 0 8px #000; line-height: 1.3; }
+.log div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* portrait: the left column is short, so the log sits at the bottom centre, between the thumbs */
+@media (orientation: portrait) { .log { left: 50%; transform: translateX(-50%); width: 250px; top: auto; bottom: calc(var(--sab) + 12px); text-align: center; } }
 
 /* the two hands */
 .hands { position: absolute; left: calc(var(--sal) + 10px); top: calc(var(--sat) + 82px); display: flex; flex-direction: column; gap: 5px; }
@@ -109,8 +111,11 @@ table.records .n { text-align: right; }
 .iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.15); background: rgba(8,10,12,0.7); font-size: 17px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .iconbtn.pulse { border-color: var(--gold); color: var(--gold); animation: ptsPulse 0.9s ease-in-out infinite alternate; }
 
-/* techniques, the potion and the swap, above the right thumb */
+/* techniques, the potion and the swap, above the right thumb; in a short
+   landscape viewport a 2 by 2 block at the bottom right, so they never
+   climb into the top-right buttons */
 .techs { position: absolute; right: calc(var(--sar) + 12px); bottom: calc(var(--sab) + 36%); display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+@media (orientation: landscape) and (max-height: 500px) { .techs { bottom: calc(var(--sab) + 10px); flex-direction: row-reverse; flex-wrap: wrap-reverse; width: 150px; justify-content: flex-start; align-items: flex-end; gap: 8px; } .techs .potion { order: 3; } .techs .swapbtn { order: 4; } .tech.big { width: 64px; height: 64px; } .tech.big span { font-size: 24px; } }
 .tech { position: relative; width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 3px solid rgba(0,0,0,0.6); background: conic-gradient(var(--gold) var(--f, 100%), rgba(10,14,10,0.7) 0); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.92; cursor: pointer; touch-action: none; }
 .tech::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: rgba(10,14,10,0.88); }
 .tech span { position: relative; font-size: 22px; line-height: 1; }
@@ -135,12 +140,15 @@ table.records .n { text-align: right; }
 .stick.aim { border-color: rgba(255,200,80,0.5); }
 .stick.aim > div { background: rgba(255,200,80,0.75); }
 
-/* the pickup card, top centre under the hands */
-.pickup { position: absolute; left: 50%; top: calc(var(--sat) + 236px); transform: translateX(-50%); width: min(78vw, 260px); display: flex; flex-direction: column; align-items: stretch; animation: pickupIn 0.18s ease-out; }
-@keyframes pickupIn { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
-.pickup .take { margin: 5px 0 0; min-width: 0; padding: 8px; font-size: 14px; }
-.pickup .take small { opacity: 0.6; font-size: 10px; margin-left: 4px; }
-@media (orientation: landscape) and (max-height: 500px) { .pickup { width: 230px; top: calc(var(--sat) + 150px); left: 50%; } }
+/* the loot chip: one line under the hands, in the left column (docs/loot-ui.md) */
+.lootchip { position: absolute; left: calc(var(--sal) + 10px); top: calc(var(--sat) + 192px); width: 150px; padding: 4px 8px; border-radius: 9px; border: 2px solid; background: rgba(20,28,20,0.92); text-align: left; cursor: pointer; animation: chipIn 0.18s ease-out; display: flex; flex-direction: column; gap: 1px; }
+@keyframes chipIn { from { transform: translateX(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.lootchip .lname { font-size: 10px; font-weight: 800; line-height: 1.15; }
+.lootchip .lnum { font-size: 9px; color: var(--muted); font-weight: 700; }
+.overlay.loot .lootcard { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.overlay.loot .lootvs .small { margin: 0 0 3px 4px; font-size: 11px; }
+.overlay.loot .row .btn { min-width: 0; font-size: 15px; padding: 11px 16px; }
+@media (orientation: landscape) and (max-height: 500px) { .overlay.loot .lootcard { flex-direction: row; max-width: 700px; } .overlay.loot .lootcard > * { flex: 1; min-width: 0; } .overlay.loot h2 { margin: 0 0 6px; font-size: 18px; } }
 .icard { position: relative; text-align: left; background: var(--panel); border: 2px solid; border-radius: 12px; padding: 9px 11px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
 .icard.r3 { box-shadow: 0 0 18px rgba(192,112,255,0.45), 0 6px 20px rgba(0,0,0,0.6); }
 .icard .iname { font-weight: 900; font-size: 15px; line-height: 1.15; }

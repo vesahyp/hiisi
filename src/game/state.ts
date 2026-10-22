@@ -157,6 +157,8 @@ export interface Drop {
   opened: boolean;
   /** once seen, drawn in the dark too */
   seen: boolean;
+  /** the walk-over rule has been applied once; what it left waits as a chip */
+  judged: boolean;
   life: number;
 }
 

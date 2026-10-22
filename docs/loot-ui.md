@@ -1,0 +1,63 @@
+# Loot on a phone: the rule and the chip
+
+Written 2026-10-22 after Vesa's first playtest of Hiisi in landscape: "Loot
+popups get in the way. Same issue as Höyry." The item card and its Take
+button sat on the hero in the middle of the screen and stopped play. This
+is the solution, written so Höyry can take it next.
+
+## The rule
+
+A drop under the hero is judged once, on the walk, and the walk never
+stops for it (`autoTake` in `src/game/sim.ts`):
+
+1. **A consumable joins the pack.** Potions stack. The log says what was
+   taken, named by colour when the kind is unknown.
+2. **A coat with more armour is worn.** The old coat goes into the pack
+   when there is room, else it lies where the new one lay.
+3. **A weapon goes into an empty hand**, or **in place of the same kind
+   when it is plainly better**: a sixth more worth by `weaponScore`
+   (average damage, rarity, an affix). The replaced weapon goes into the
+   pack when there is room, else onto the floor. The active hand does not
+   change, so a better sword found while holding the bow goes to the sword
+   hand quietly. The log line says "Parempi: name (käsi 1)".
+4. **Everything else waits as a chip.** Nothing is lost by walking past.
+
+What makes this safe to automate: the replaced thing is never destroyed,
+and a wrong automatic choice is undone in the pack sheet in two taps.
+
+## The chip
+
+What the rule leaves lying under the hero shows as one line in the HUD's
+left column, under the two hands, outside the play area: the item's name
+in its rarity colour and its numbers beside the hand it would replace
+(`.lootchip` in `Game.tsx`). The chip is small, it takes only its own
+touches, and the sticks keep working around it. A tap opens the full
+comparison card as a paused overlay with the choices: hand 1, hand 2, the
+pack, or leave it. The keyboard's E takes it into the hand of its kind
+without opening anything.
+
+## The rest of the screen
+
+The same playtest showed two more things on the play area, fixed with the
+same principle (every HUD element lives in a column at the edge; the
+centre belongs to the game):
+
+- **The message log** sits in the left column under the hands, three
+  lines, left-aligned, never over the centre.
+- **The technique, potion and swap buttons** form a 2 by 2 block at the
+  bottom right in landscape, so a short viewport (Safari with its bars,
+  about 330 px) never pushes them up into the top-right buttons.
+
+## Porting to Höyry
+
+Höyry's gun pickup is the same shape: a card at top centre with a Take
+button. The port is:
+
+- `autoTake` in `sim.ts`: a gun into an empty slot, or in place of the
+  same type when `gunScore` is a sixth higher; the old gun stays on the
+  floor (Höyry has no pack) and the card logic goes.
+- The chip under the slots, in Höyry's `.slots` column, with the full card
+  as a pause overlay on tap.
+- The proof: `scripts/loot-check.mjs` here, which places drops beside the
+  hero through a test hook and asserts that no HUD element covers the
+  hero's part of the screen in portrait or in a short landscape viewport.

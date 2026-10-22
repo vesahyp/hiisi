@@ -4,16 +4,17 @@
 #   make dev           # vite dev server, also on the LAN for a phone
 #   make build         # production build -> dist/
 #   make preview       # build, then serve it locally
-#   make check         # typecheck + build + sim-check + gauntlet + phone-run: what a commit needs green
+#   make check         # typecheck + build + sim-check + gauntlet + loot-check + phone-run: what a commit needs green
 #   make sim-check     # the floors, the hands, levelling, the save, a replay, the bot, headless
 #   make balance       # the bot plays whole runs, one line each (RUNS ?= 6 STYLE ?= best WHO ?= bot)
 #   make gauntlet      # the human-limited bot must reach floor TO (3) in most of RUNS (8) runs, with either hand
 #   make shots-setup   # once: install Chromium for Playwright
 #   make shots         # phone screenshots into shots/ (make shots-en for English)
 #   make phone-run     # the human-limited bot plays on an emulated iPhone by real frames, on video (shots/phone/)
+#   make loot-check    # loot never covers the play area: the chip, the walk, the card, in portrait and a short landscape (shots/loot/)
 #   make mockups       # re-render the design mockups into public/mockups/shots/
 
-.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run mockups
+.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check mockups
 
 dev:
 	npm run dev
@@ -29,6 +30,7 @@ check:
 	npm run build
 	npm run sim-check
 	npm run gauntlet
+	$(MAKE) loot-check
 	$(MAKE) phone-run
 
 sim-check:
@@ -52,6 +54,9 @@ shots:
 
 shots-en:
 	node scripts/shots.mjs en
+
+loot-check:
+	node scripts/loot-check.mjs
 
 SEED ?= 2026
 phone-run:

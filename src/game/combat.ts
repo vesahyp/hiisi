@@ -71,7 +71,7 @@ function kill(s: SimState, e: Enemy, src: HitSource): void {
 export function dropItem(s: SimState, x: number, y: number, item: Item): void {
   // onto the floor, never into a wall: a thing in a wall cannot be reached
   const p = freeSpot(s.dungeon, x, y, 10);
-  s.drops.push({ id: s.nextId++, x: p.x, y: p.y, kind: 'item', item, loot: [], opened: false, seen: false, life: 0 });
+  s.drops.push({ id: s.nextId++, x: p.x, y: p.y, kind: 'item', item, loot: [], opened: false, seen: false, judged: false, life: 0 });
   if (item.rarity >= 2) s.sounds.push(item.rarity >= 3 ? 'epic' : 'rare');
 }
 

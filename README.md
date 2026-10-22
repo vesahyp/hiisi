@@ -39,7 +39,10 @@ E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
   kerroksen alussa, ennen ensimmäistä tappoa.
 - **Esineet:** aseet, takit ja juomat. Aseella on harvinaisuus (harmaa,
   vihreä, sininen, violetti) ja sinisestä ylöspäin yksi ominaisuus. Tuntematon
-  juoma tunnistetaan juomalla. Arkut aukeavat koskemalla.
+  juoma tunnistetaan juomalla. Arkut aukeavat koskemalla. **Löydöt tulevat
+  mukaan kävellen:** juomat reppuun, selvästi parempi ase tai takki
+  käteen tai ylle, ja vanha reppuun. Muu jää lattialle ja näkyy pienenä
+  lappuna käsien alla; napautus avaa vertailun.
 - **Portaat** ovat kauimmaisessa huoneessa. Seiso niillä hetki. Elämä palaa
   portailla, ja kierros tallentuu kerroksen alussa, joten sen voi jatkaa
   myöhemmin.
