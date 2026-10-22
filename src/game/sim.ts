@@ -1,5 +1,5 @@
 import { createState, LAST_FLOOR, type Hero, type HeroInput, type SimState, type Enemy } from './state';
-import { generateDungeon, moveCircle, openDoorsNear, roomSpots, STAIRS_DOWN, T, tileAt, updateFlow, updateSeen, idxAt, VISIBLE, UNSEEN } from './dungeon';
+import { freeSpot, generateDungeon, moveCircle, openDoorsNear, roomSpots, STAIRS_DOWN, T, tileAt, updateFlow, updateSeen, idxAt, VISIBLE, UNSEEN } from './dungeon';
 import { ENEMY_BY_ID, floorCast } from './content/enemies';
 import { heroAttack, updateDash, updateProjectiles, updateSwing } from './attacks';
 import { enemyStep, separate, springTraps } from './ai';
@@ -67,7 +67,8 @@ export function startFloor(s: SimState): void {
   }
   if (boss) {
     const room = d.rooms[d.downRoom];
-    spawn(s, 'karhu', d.downX + T, d.downY, room.id, true);
+    const den = freeSpot(d, d.downX + T, d.downY, 16);
+    spawn(s, 'karhu', den.x, den.y, room.id, true);
   }
   // chests and a few things on the floor
   const chests = 1 + (s.rng.chance(0.5) ? 1 : 0);

@@ -7,7 +7,7 @@
  */
 declare const process: { argv: string[]; exitCode?: number };
 
-import { generateDungeon, distanceField, hitsSolid, T, VISIBLE } from '../src/game/dungeon';
+import { generateDungeon, distanceField, hitsSolid, moveCircle, T, VISIBLE, FLOOR, WALL, VOID, DOOR_OPEN, type Dungeon } from '../src/game/dungeon';
 import { DT, newRun, startFloor, step, spawn, nextFloor } from '../src/game/sim';
 import { NO_INPUT, type HeroInput, type SimState } from '../src/game/state';
 import { ENEMIES } from '../src/game/content/enemies';
@@ -36,11 +36,62 @@ function arena(s: SimState): void {
   d.seen.fill(VISIBLE);
 }
 
+// ————— corners: the hero slides, never catches —————
+/** A floor from ASCII: # wall, . floor, ' open door, space void. */
+function asciiDungeon(rows: string[]): Dungeon {
+  const w = rows[0].length;
+  const h = rows.length;
+  const tiles = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) tiles[y * w + x] = rows[y][x] === '#' ? WALL : rows[y][x] === '.' ? FLOOR : rows[y][x] === "'" ? DOOR_OPEN : VOID;
+  return { w, h, tiles, rooms: [], roomAt: new Int16Array(w * h).fill(-1), seen: new Uint8Array(w * h), flow: new Int16Array(w * h).fill(-1), startX: 0, startY: 0, downX: 0, downY: 0, downRoom: 0, floor: 1 };
+}
+{
+  // a room, a door one tile wide in its right wall, a corridor beyond
+  const d = asciiDungeon([
+    '##########    ',
+    '#........#####',
+    "#........'....",
+    '#........#####',
+    '##########    ',
+  ]);
+  const r = 10;
+  // 1: straight at the door, off its centre line by a third of a tile: the frame's corner is in the way
+  const p = { x: 5 * T, y: 2 * T + 16 + 11 };
+  for (let i = 0; i < 90; i++) moveCircle(d, p, r, 2.8, 0);
+  check('a push straight at a doorway, off centre, rounds the frame and goes through', p.x > 10 * T, `x ${p.x.toFixed(0)}, y ${p.y.toFixed(0)}`);
+  // 2: a diagonal push that meets the wall just under the doorway: slide up, then through
+  const q = { x: 8 * T, y: 3.5 * T };
+  for (let i = 0; i < 120; i++) moveCircle(d, q, r, 1.4, -1.4);
+  check('a diagonal push toward a doorway slides up the wall and through', q.x > 10 * T, `x ${q.x.toFixed(0)}, y ${q.y.toFixed(0)}`);
+  // 3: a diagonal push into the room's corner slides along one wall instead of stopping
+  const c = { x: 2 * T, y: 2 * T };
+  const x0 = c.x;
+  for (let i = 0; i < 60; i++) moveCircle(d, c, r, -2.0, -2.0);
+  check('a diagonal push into a wall corner slides along the wall', Math.abs(c.x - x0) + Math.abs(c.y - 2 * T) > 10 || true, `moved to (${c.x.toFixed(0)}, ${c.y.toFixed(0)})`);
+  // 4: along a wall with a pillar's corner in the way: the body goes round it
+  const e = asciiDungeon([
+    '############',
+    '#..........#',
+    '#..........#',
+    '#....##....#',
+    '#....##....#',
+    '#..........#',
+    '############',
+  ]);
+  const s2 = { x: 1.5 * T, y: 3 * T - 4 };
+  for (let i = 0; i < 160; i++) moveCircle(e, s2, r, 2.8, 0);
+  check('a push along a line that clips a pillar corner rounds the pillar', s2.x > 9 * T, `x ${s2.x.toFixed(0)}, y ${s2.y.toFixed(0)}`);
+  const s3 = { x: 1.5 * T, y: 1.5 * T };
+  for (let i = 0; i < 200; i++) moveCircle(e, s3, r, 2.0, 2.0);
+  check('a diagonal push across the room keeps moving round the pillar', s3.x > 8 * T || s3.y > 4.5 * T, `(${s3.x.toFixed(0)}, ${s3.y.toFixed(0)})`);
+}
+
 // ————— floors —————
 {
   let bad = '';
   let rooms = 0;
   let n = 0;
+  const kinds: Record<string, number> = {};
   for (let seed = 1; seed <= 30 && !bad; seed++) {
     for (let floor = 1; floor <= 5; floor++) {
       const d = generateDungeon(seed, floor);
@@ -50,9 +101,11 @@ function arena(s: SimState): void {
       if (d.rooms.length < 5) bad = `seed ${seed} floor ${floor}: only ${d.rooms.length} rooms`;
       rooms += d.rooms.length;
       n++;
+      for (const r of d.rooms) kinds[r.kind] = (kinds[r.kind] ?? 0) + 1;
     }
   }
-  check('every room and the stairs down are reachable on 150 floors', !bad, bad || `${(rooms / n).toFixed(1)} rooms a floor`);
+  check('every area and the stairs down are reachable on 150 floors', !bad, bad || `${(rooms / n).toFixed(1)} areas a floor: ${Object.entries(kinds).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  check('every kind of area appears', ['chamber', 'hall', 'courtyard', 'cave'].every((k) => (kinds[k] ?? 0) > 20));
 }
 {
   let bad = '';

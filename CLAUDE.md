@@ -39,9 +39,12 @@ src/
     state.ts            SimState, Hero, Enemy, HeroInput, createState
     sim.ts              newRun, startFloor, step(), nextFloor; the stairs,
                           drops under the hero, the pack, potions
-    dungeon.ts          floor generation (rooms, corridors, doors, stairs),
-                          tile collision, flow field, line of sight, what the
-                          hero has seen
+    dungeon.ts          floor generation (four kinds of area: chamber, hall,
+                          courtyard, cave; corridors one to three wide; doors
+                          on the narrow ones; Höyry's wall stamps as
+                          furniture), tile collision that slides round
+                          corners, flow field, line of sight, what the hero
+                          has seen
     attacks.ts          the hero's hands: the sword's arc and parry, the
                           bow's draw and arrows, the techniques, projectiles
     ai.ts               enemy behaviour: sleep, idle, chase, windup, strike,
@@ -82,6 +85,8 @@ scripts/phone-run.mjs   make phone-run: the human-limited bot on an emulated
                           iPhone at real speed, on video
 scripts/loot-check.mjs  make loot-check: loot never covers the play area,
                           portrait and a short landscape
+scripts/floor-shots.mjs make floor-shots: whole floors as images, three
+                          seeds, floors 1, 3 and 5
 public/mockups/         the design mockups and their shooter
 ```
 
@@ -108,10 +113,14 @@ public/mockups/         the design mockups and their shooter
    floor spawns (`save.ts`); death clears it. Nothing mid-floor is saved.
 9. **Two languages, English in the code.** Every player-facing string is
    `L(fi, en)` or `tr(fi, en)`.
-10. **Nothing in the HUD covers the hero's part of the screen.** Every
+10. **A body never catches on a corner.** `moveCircle` slides along walls
+    and nudges round door frames and wall ends; `sim-check` pushes a body
+    diagonally into corners and doorways and fails if it stops. Corridors
+    are one to three tiles wide; areas are open enough to kite in.
+11. **Nothing in the HUD covers the hero's part of the screen.** Every
     element lives in a column at an edge (`docs/loot-ui.md`); `loot-check`
     asserts it in portrait and in a short landscape viewport.
-11. **Prose style:** no em dashes, no "this, not that", no metaphors.
+12. **Prose style:** no em dashes, no "this, not that", no metaphors.
     Commit messages in English.
 
 ## Workflow

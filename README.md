@@ -25,9 +25,12 @@ E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
 
 ## Kierros
 
-- **Kerros** on huoneita ja käytäviä. Näet valosi verran ja muistat huoneet
-  joissa olet käynyt. Viholliset nukkuvat tai vaeltavat huoneissaan, ja
-  huomaavat sinut kun näkevät sinut.
+- **Kerros** on kammioita, pylvässaleja, avoimia pihoja ja luolia, joita
+  käytävät yhdistävät. Kammiot ja salit valaistuvat kun astut sisään;
+  pihoilla ja luolissa näet valosi verran. Muistat paikat joissa olet
+  käynyt. Viholliset nukkuvat tai vaeltavat alueillaan, ja huomaavat sinut
+  kun näkevät sinut. Hahmo liukuu seinää pitkin ja kulmien ympäri, joten
+  oviaukkoon ei tarvitse osua tarkasti.
 - **Jokainen vihollisen isku näkyy ennen kuin se osuu**: punainen kaari
   ennen lyöntiä, viiva ennen nuolta, kaista ennen karhun rynnäkköä.
 - **Taidot nousevat osumista.** Miekka ja jousi nousevat kumpikin omista

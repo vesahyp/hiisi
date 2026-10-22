@@ -12,9 +12,10 @@
 #   make shots         # phone screenshots into shots/ (make shots-en for English)
 #   make phone-run     # the human-limited bot plays on an emulated iPhone by real frames, on video (shots/phone/)
 #   make loot-check    # loot never covers the play area: the chip, the walk, the card, in portrait and a short landscape (shots/loot/)
+#   make floor-shots   # three floors of three seeds, the whole floor revealed on the map sheet, into shots/floors/
 #   make mockups       # re-render the design mockups into public/mockups/shots/
 
-.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check mockups
+.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check floor-shots mockups
 
 dev:
 	npm run dev
@@ -61,6 +62,9 @@ loot-check:
 SEED ?= 2026
 phone-run:
 	node scripts/phone-run.mjs $(SEED)
+
+floor-shots:
+	node scripts/floor-shots.mjs
 
 mockups:
 	node public/mockups/shoot.mjs

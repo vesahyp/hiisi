@@ -21,13 +21,25 @@ export const UNSEEN = 0;
 export const REMEMBERED = 1;
 export const VISIBLE = 2;
 
+/**
+ * The kinds of area a floor is made of, Höyry's variety on NetHack's plan:
+ * a chamber is the small plain room; a hall is a big room with pillars; a
+ * courtyard is a wide open floor with wall stamps to fight around; a cave
+ * is an irregular blob. Chambers and halls are lit when you stand in them;
+ * courtyards and caves show only what the light reaches.
+ */
+export type RoomKind = 'chamber' | 'hall' | 'courtyard' | 'cave';
+
 export interface Room {
   id: number;
+  kind: RoomKind;
+  lit: boolean;
+  /** the bounding box, in tiles */
   x: number;
   y: number;
   w: number;
   h: number;
-  /** centre, in tiles */
+  /** a floor tile near the middle, in tiles */
   cx: number;
   cy: number;
 }
@@ -98,16 +110,45 @@ export function hitsSolid(d: Dungeon, x: number, y: number, r: number): boolean 
   return false;
 }
 
-/** Move a circle by (dx, dy), stopping at solid tiles, one axis at a time. */
+/**
+ * Move a circle by (dx, dy), stopping at solid tiles, one axis at a time,
+ * so a push into a wall slides along it. When an axis is blocked only by
+ * the corner of a tile (a door frame, the end of a wall), the body is
+ * nudged a few pixels across so it rounds the corner instead of catching
+ * on it. That is what keeps a thumb from snagging in a doorway.
+ */
 export function moveCircle(d: Dungeon, p: { x: number; y: number }, r: number, dx: number, dy: number): void {
   const step = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / (r * 0.8)));
   const sx = dx / step;
   const sy = dy / step;
+  const nudge = Math.max(2, Math.hypot(sx, sy) * 1.2);
   for (let i = 0; i < step; i++) {
-    p.x += sx;
-    if (hitsSolid(d, p.x, p.y, r)) p.x -= sx;
-    p.y += sy;
-    if (hitsSolid(d, p.x, p.y, r)) p.y -= sy;
+    if (sx !== 0) {
+      p.x += sx;
+      if (hitsSolid(d, p.x, p.y, r)) {
+        p.x -= sx;
+        for (const k of [nudge, -nudge, nudge * 2, -nudge * 2, nudge * 3, -nudge * 3]) {
+          if (!hitsSolid(d, p.x + sx, p.y + k, r)) {
+            p.x += sx;
+            p.y += k;
+            break;
+          }
+        }
+      }
+    }
+    if (sy !== 0) {
+      p.y += sy;
+      if (hitsSolid(d, p.x, p.y, r)) {
+        p.y -= sy;
+        for (const k of [nudge, -nudge, nudge * 2, -nudge * 2, nudge * 3, -nudge * 3]) {
+          if (!hitsSolid(d, p.x + k, p.y + sy, r)) {
+            p.y += sy;
+            p.x += k;
+            break;
+          }
+        }
+      }
+    }
   }
   p.x = Math.max(T + r, Math.min((d.w - 1) * T - r, p.x));
   p.y = Math.max(T + r, Math.min((d.h - 1) * T - r, p.y));
@@ -265,9 +306,23 @@ export function updateSeen(d: Dungeon, hx: number, hy: number, lightTiles: numbe
     seen[i] = VISIBLE;
   };
   const room = roomOf(d, hx, hy);
-  if (room >= 0) {
+  if (room >= 0 && d.rooms[room].lit) {
     const r = d.rooms[room];
-    for (let y = r.y - 1; y <= r.y + r.h; y++) for (let x = r.x - 1; x <= r.x + r.w; x++) mark(y * d.w + x);
+    for (let y = r.y - 1; y <= r.y + r.h; y++) {
+      for (let x = r.x - 1; x <= r.x + r.w; x++) {
+        if (x < 0 || y < 0 || x >= d.w || y >= d.h) continue;
+        const i = y * d.w + x;
+        if (d.roomAt[i] === room) mark(i);
+        else if (d.tiles[i] === WALL || d.tiles[i] === DOOR || d.tiles[i] === DOOR_OPEN) {
+          // a wall is lit when it borders the room
+          for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+            const nx = x + ox;
+            const ny = y + oy;
+            if (nx >= 0 && ny >= 0 && nx < d.w && ny < d.h && d.roomAt[ny * d.w + nx] === room) mark(i);
+          }
+        }
+      }
+    }
   }
   const tx0 = Math.floor(hx / T);
   const ty0 = Math.floor(hy / T);
@@ -303,28 +358,48 @@ export function roomsExplored(d: Dungeon): number {
 }
 
 export function generateDungeon(seed: number, floor: number): Dungeon {
-  for (let attempt = 0; attempt < 50; attempt++) {
+  for (let attempt = 0; attempt < 60; attempt++) {
     const d = tryGenerate(new Rng(seed * 7919 + floor * 104729 + attempt * 31), floor);
     if (d) return d;
   }
   throw new Error('no floor generated');
 }
 
+const KINDS: RoomKind[] = ['chamber', 'hall', 'courtyard', 'cave'];
+const KIND_WEIGHT: Record<RoomKind, number> = { chamber: 2, hall: 3, courtyard: 2.5, cave: 2.5 };
+const KIND_SIZE: Record<RoomKind, [number, number, number, number]> = {
+  chamber: [5, 8, 4, 6],
+  hall: [9, 14, 7, 10],
+  courtyard: [12, 18, 9, 13],
+  cave: [11, 16, 8, 12],
+};
+
+/**
+ * One floor: six to nine areas of mixed kinds, each carved and furnished
+ * in its box, joined by corridors one to three tiles wide in x order with
+ * a loop or two, doors on the narrow corridors into chambers and halls,
+ * walls round everything, stairs up where the hero starts and down in the
+ * farthest area. Null when a try comes out disconnected, so the caller
+ * tries the next seed.
+ */
 function tryGenerate(rng: Rng, floor: number): Dungeon | null {
-  const w = Math.min(64, 46 + floor * 3);
-  const h = Math.min(52, 38 + floor * 3);
+  const w = Math.min(70, 52 + floor * 3);
+  const h = Math.min(56, 42 + floor * 3);
   const tiles = new Uint8Array(w * h);
   const roomAt = new Int16Array(w * h).fill(-1);
   const rooms: Room[] = [];
-  const want = Math.min(9, 7 + Math.floor(floor / 2));
-  const get = (x: number, y: number) => tiles[y * w + x];
+  const want = Math.min(9, 6 + Math.floor(floor / 2));
+  const get = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? VOID : tiles[y * w + x]);
   const set = (x: number, y: number, t: number) => {
     if (x >= 0 && y >= 0 && x < w && y < h) tiles[y * w + x] = t;
   };
-  // Rooms: random rectangles, two tiles apart.
-  for (let k = 0; k < 400 && rooms.length < want; k++) {
-    const rw = rng.int(5, 11);
-    const rh = rng.int(4, 8);
+
+  // the areas: boxes three tiles apart
+  for (let k = 0; k < 500 && rooms.length < want; k++) {
+    const kind = rooms.length === 0 ? (rng.chance(0.5) ? 'chamber' : 'hall') : rng.weighted(KINDS, (x) => KIND_WEIGHT[x]);
+    const [w0, w1, h0, h1] = KIND_SIZE[kind];
+    const rw = rng.int(w0, w1);
+    const rh = rng.int(h0, h1);
     const x = rng.int(2, w - rw - 3);
     const y = rng.int(2, h - rh - 3);
     let clash = false;
@@ -335,25 +410,73 @@ function tryGenerate(rng: Rng, floor: number): Dungeon | null {
       }
     }
     if (clash) continue;
-    const id = rooms.length;
-    rooms.push({ id, x, y, w: rw, h: rh, cx: x + Math.floor(rw / 2), cy: y + Math.floor(rh / 2) });
-    for (let j = 0; j < rh; j++) for (let i = 0; i < rw; i++) {
-      tiles[(y + j) * w + x + i] = FLOOR;
-      roomAt[(y + j) * w + x + i] = id;
-    }
+    rooms.push({ id: rooms.length, kind, lit: kind === 'chamber' || kind === 'hall', x, y, w: rw, h: rh, cx: x + Math.floor(rw / 2), cy: y + Math.floor(rh / 2) });
   }
   if (rooms.length < 5) return null;
   rooms.sort((a, b) => a.cx - b.cx || a.cy - b.cy);
   rooms.forEach((r, i) => (r.id = i));
-  for (let i = 0; i < roomAt.length; i++) if (roomAt[i] >= 0) roomAt[i] = rooms.findIndex((r) => i % w >= r.x && i % w < r.x + r.w && Math.floor(i / w) >= r.y && Math.floor(i / w) < r.y + r.h);
-  // Corridors: a chain through the rooms in x order, plus a loop or two.
+
+  // carve each area in its box and mark its tiles
+  for (const r of rooms) {
+    const mask = carveArea(rng, r);
+    for (let j = 0; j < r.h; j++) {
+      for (let i = 0; i < r.w; i++) {
+        if (!mask[j * r.w + i]) continue;
+        tiles[(r.y + j) * w + r.x + i] = FLOOR;
+        roomAt[(r.y + j) * w + r.x + i] = r.id;
+      }
+    }
+    // the anchor: the floor tile nearest the box's middle
+    let best = Infinity;
+    for (let j = 0; j < r.h; j++) {
+      for (let i = 0; i < r.w; i++) {
+        if (!mask[j * r.w + i]) continue;
+        const dd = Math.hypot(i - r.w / 2, j - r.h / 2);
+        if (dd < best) {
+          best = dd;
+          r.cx = r.x + i;
+          r.cy = r.y + j;
+        }
+      }
+    }
+  }
+
+  // furniture: pillars in halls, Höyry's wall stamps in courtyards, a
+  // pillar or two in a cave; every stamp must leave the area connected
+  for (const r of rooms) {
+    const n = r.kind === 'hall' ? rng.int(1, 3) : r.kind === 'courtyard' ? rng.int(2, 4) : r.kind === 'cave' ? rng.int(0, 1) : 0;
+    for (let k = 0; k < n; k++) {
+      const x = rng.int(r.x + 2, r.x + r.w - 3);
+      const y = rng.int(r.y + 2, r.y + r.h - 3);
+      const cells: [number, number][] = [];
+      const shape = r.kind === 'hall' ? 'pillar' : rng.pick(['wall', 'lwall', 'pillar', 'wall'] as const);
+      if (shape === 'pillar') cells.push([x, y], [x + 1, y], [x, y + 1], [x + 1, y + 1]);
+      else if (shape === 'wall') {
+        const len = rng.int(3, 6);
+        const horiz = rng.chance(0.6);
+        for (let i = 0; i < len; i++) cells.push(horiz ? [x + i, y] : [x, y + i]);
+      } else {
+        const a = rng.int(2, 4);
+        const b = rng.int(2, 4);
+        const sx = rng.chance(0.5) ? 1 : -1;
+        const sy = rng.chance(0.5) ? 1 : -1;
+        for (let i = 0; i < a; i++) cells.push([x + i * sx, y]);
+        for (let i = 1; i < b; i++) cells.push([x, y + i * sy]);
+      }
+      stampWalls(tiles, roomAt, w, h, r, cells);
+    }
+  }
+
+  // corridors: a chain in x order, plus loops; wide ones mostly
   const corridor = (a: Room, b: Room) => {
+    const width = rng.weighted([1, 2, 3], (x) => (x === 1 ? 1.2 : x === 2 ? 2.5 : 1));
     let x = a.cx;
     let y = a.cy;
     const carve = () => {
-      if (get(x, y) === VOID) set(x, y, FLOOR);
+      for (let k = 0; k < width; k++) {
+        for (const [px, py] of [[x + k, y], [x, y + k]]) if (get(px, py) === VOID) set(px, py, FLOOR);
+      }
     };
-    const horizFirst = rng.chance(0.5);
     const goX = () => {
       while (x !== b.cx) {
         x += Math.sign(b.cx - x);
@@ -366,7 +489,7 @@ function tryGenerate(rng: Rng, floor: number): Dungeon | null {
         carve();
       }
     };
-    if (horizFirst) {
+    if (rng.chance(0.5)) {
       goX();
       goY();
     } else {
@@ -375,48 +498,52 @@ function tryGenerate(rng: Rng, floor: number): Dungeon | null {
     }
   };
   for (let i = 0; i + 1 < rooms.length; i++) corridor(rooms[i], rooms[i + 1]);
-  const loops = 1 + rng.int(0, 1);
+  const loops = 1 + rng.int(0, 2);
   for (let k = 0; k < loops; k++) {
     const a = rng.int(0, rooms.length - 1);
     const b = rng.int(0, rooms.length - 1);
     if (Math.abs(a - b) >= 2) corridor(rooms[a], rooms[b]);
   }
-  // Doors: a corridor tile on a room's wall ring, between room floor and corridor.
+
+  // doors: where a corridor one tile wide meets a chamber or a hall
   for (const r of rooms) {
+    if (!r.lit) continue;
     for (let y = r.y - 1; y <= r.y + r.h; y++) {
       for (let x = r.x - 1; x <= r.x + r.w; x++) {
         const onRing = x === r.x - 1 || x === r.x + r.w || y === r.y - 1 || y === r.y + r.h;
         const corner = (x === r.x - 1 || x === r.x + r.w) && (y === r.y - 1 || y === r.y + r.h);
         if (!onRing || corner) continue;
         if (get(x, y) !== FLOOR || roomAt[y * w + x] >= 0) continue;
-        // the tile straight across must be room floor and the one behind corridor
         const dx = x === r.x - 1 ? 1 : x === r.x + r.w ? -1 : 0;
         const dy = y === r.y - 1 ? 1 : y === r.y + r.h ? -1 : 0;
         if (roomAt[(y + dy) * w + x + dx] !== r.id) continue;
         if (get(x - dx, y - dy) === VOID) continue;
+        // one tile wide: both sides across the corridor are void or wall
+        const side = [get(x + dy, y + dx), get(x - dy, y - dx)];
+        if (side.some((t) => t === FLOOR)) continue;
         if (rng.chance(0.75)) set(x, y, DOOR);
       }
     }
   }
-  // Walls: everything void next to a floor.
+
+  // walls round everything that is walkable
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       if (get(x, y) !== VOID) continue;
       let near = false;
-      for (let oy = -1; oy <= 1 && !near; oy++) for (let ox = -1; ox <= 1; ox++) {
-        const nx = x + ox;
-        const ny = y + oy;
-        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
-        const t = get(nx, ny);
-        if (t === FLOOR || t === DOOR) {
-          near = true;
-          break;
+      for (let oy = -1; oy <= 1 && !near; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          const t = get(x + ox, y + oy);
+          if (t === FLOOR || t === DOOR) {
+            near = true;
+            break;
+          }
         }
       }
       if (near) set(x, y, WALL);
     }
   }
-  // Every room must be reachable from the first.
+
   const d: Dungeon = {
     w,
     h,
@@ -443,6 +570,8 @@ function tryGenerate(rng: Rng, floor: number): Dungeon | null {
       farRoom = r.id;
     }
   }
+  // every floor tile of every area reachable, or the try is thrown away
+  for (let i = 0; i < w * h; i++) if (tiles[i] === FLOOR && roomAt[i] >= 0 && f[i] < 0) return null;
   const dr = rooms[farRoom];
   d.downRoom = farRoom;
   d.downX = (dr.cx + 0.5) * T;
@@ -452,6 +581,99 @@ function tryGenerate(rng: Rng, floor: number): Dungeon | null {
   return d;
 }
 
+/** The floor mask of an area inside its box: a rectangle, or a blob for a cave. */
+function carveArea(rng: Rng, r: Room): Uint8Array {
+  const m = new Uint8Array(r.w * r.h).fill(1);
+  if (r.kind !== 'cave') return m;
+  // a cave: eat the edges at random, smooth twice, keep the biggest piece
+  for (let j = 0; j < r.h; j++) {
+    for (let i = 0; i < r.w; i++) {
+      const edge = Math.min(i, j, r.w - 1 - i, r.h - 1 - j);
+      const p = edge === 0 ? 0.65 : edge === 1 ? 0.35 : edge === 2 ? 0.12 : 0.04;
+      if (rng.chance(p)) m[j * r.w + i] = 0;
+    }
+  }
+  for (let pass = 0; pass < 2; pass++) {
+    const n = m.slice();
+    for (let j = 0; j < r.h; j++) {
+      for (let i = 0; i < r.w; i++) {
+        let c = 0;
+        for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+          const x = i + ox;
+          const y = j + oy;
+          if (x < 0 || y < 0 || x >= r.w || y >= r.h) continue;
+          if (m[y * r.w + x]) c++;
+        }
+        n[j * r.w + i] = c >= 5 ? 1 : 0;
+      }
+    }
+    m.set(n);
+  }
+  // the biggest connected piece
+  const seen = new Int16Array(r.w * r.h).fill(-1);
+  let bestId = -1;
+  let bestN = 0;
+  let id = 0;
+  for (let s0 = 0; s0 < m.length; s0++) {
+    if (!m[s0] || seen[s0] >= 0) continue;
+    const q = [s0];
+    seen[s0] = id;
+    let n = 0;
+    while (q.length) {
+      const i = q.pop()!;
+      n++;
+      const x = i % r.w;
+      const y = (i - x) / r.w;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= r.w || ny >= r.h) continue;
+        const j = ny * r.w + nx;
+        if (!m[j] || seen[j] >= 0) continue;
+        seen[j] = id;
+        q.push(j);
+      }
+    }
+    if (n > bestN) {
+      bestN = n;
+      bestId = id;
+    }
+    id++;
+  }
+  for (let i = 0; i < m.length; i++) m[i] = seen[i] === bestId ? 1 : 0;
+  if (bestN < r.w * r.h * 0.4) m.fill(1);
+  return m;
+}
+
+/** Walls stamped inside an area; undone when they would cut the area in two or seal its middle. */
+function stampWalls(tiles: Uint8Array, roomAt: Int16Array, w: number, h: number, r: Room, cells: [number, number][]): void {
+  const before: [number, number][] = [];
+  for (const [x, y] of cells) {
+    if (x < r.x + 1 || y < r.y + 1 || x >= r.x + r.w - 1 || y >= r.y + r.h - 1) continue;
+    const i = y * w + x;
+    if (tiles[i] !== FLOOR || roomAt[i] !== r.id) continue;
+    if (x === r.cx && y === r.cy) continue;
+    before.push([x, y]);
+    tiles[i] = WALL;
+  }
+  // flood from the anchor: every floor tile of the area must still be reached
+  const seen = new Uint8Array(w * h);
+  const q = [r.cy * w + r.cx];
+  seen[q[0]] = 1;
+  let n = 0;
+  while (q.length) {
+    const i = q.pop()!;
+    n++;
+    const x = i % w;
+    for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+      if (j < 0 || j >= w * h || seen[j] || roomAt[j] !== r.id || tiles[j] !== FLOOR) continue;
+      seen[j] = 1;
+      q.push(j);
+    }
+  }
+  let total = 0;
+  for (let i = 0; i < w * h; i++) if (roomAt[i] === r.id && tiles[i] === FLOOR) total++;
+  if (n !== total) for (const [x, y] of before) tiles[y * w + x] = FLOOR;
+}
+
 /** Floor tiles of a room, as world centres, at least `minDist` from (x, y). */
 export function roomSpots(d: Dungeon, room: Room, x: number, y: number, minDist: number): { x: number; y: number }[] {
   const out: { x: number; y: number }[] = [];
@@ -459,7 +681,7 @@ export function roomSpots(d: Dungeon, room: Room, x: number, y: number, minDist:
     for (let i = 0; i < room.w; i++) {
       const tx = room.x + i;
       const ty = room.y + j;
-      if (d.tiles[ty * d.w + tx] !== FLOOR) continue;
+      if (d.tiles[ty * d.w + tx] !== FLOOR || d.roomAt[ty * d.w + tx] !== room.id) continue;
       const cx = (tx + 0.5) * T;
       const cy = (ty + 0.5) * T;
       if (Math.hypot(cx - x, cy - y) < minDist) continue;

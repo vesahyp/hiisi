@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { DT, step, takeInto, wearFrom, packFrom } from '../game/sim';
+import { DT, step, takeInto, wearFrom, packFrom, startFloor } from '../game/sim';
+import { generateDungeon } from '../game/dungeon';
 import type { SimState } from '../game/state';
 import { Renderer } from '../render/renderer';
 import { InputController } from '../input/input';
@@ -87,6 +88,14 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
     const canvas = canvasRef.current!;
     const root = rootRef.current!;
     (window as unknown as { __sim: SimState }).__sim = s;
+    // For scripts/floor-shots.mjs: jump floors and reveal them.
+    (window as unknown as { __gen: typeof generateDungeon; __start: typeof startFloor }).__gen = generateDungeon;
+    (window as unknown as { __gen: typeof generateDungeon; __start: typeof startFloor }).__start = startFloor;
+    // For scripts/floor-shots.mjs: the whole floor as remembered.
+    (window as unknown as { __reveal: () => void }).__reveal = () => {
+      const d = s.dungeon;
+      for (let i = 0; i < d.seen.length; i++) if (d.tiles[i] !== 0 && d.seen[i] === 0) d.seen[i] = 1;
+    };
     // For scripts/loot-check.mjs: lay a rolled item under the hero.
     (window as unknown as { __drop: (kind: 'sword' | 'bow' | 'coat' | 'potion', rarity?: number) => void }).__drop = (kind, rarity = 0) => {
       const h = s.hero;

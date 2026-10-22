@@ -261,7 +261,7 @@ export function createHero(): Hero {
   return {
     x: 0,
     y: 0,
-    r: 11,
+    r: 10,
     hp: 100,
     alive: true,
     facing: 0,
