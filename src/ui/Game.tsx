@@ -40,10 +40,12 @@ interface Hud {
   hands: { item: Item | null; active: boolean }[];
   techs: { id: string | null; name: string; icon: string; cd: number; ready: boolean; usable: boolean }[];
   potions: number;
+  packCount: number;
   near: Item | null;
   nearVs: Item | null;
   log: { text: string; color: string; age: number }[];
   banner: { text: string; sub: string; color?: string } | null;
+  toast: { text: string; color: string } | null;
   boss: { name: string; hp: number; max: number } | null;
   buffs: string[];
 }
@@ -169,10 +171,12 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
           return { id, name: t(d.name), icon: d.icon, cd, ready: cd <= 0 && usable, usable };
         }),
         potions: heal?.count ?? 0,
+        packCount: h.pack.length,
         near,
         nearVs: near ? (near.kind === 'coat' ? h.coat : near.kind === 'potion' ? null : (h.hands.find((x) => x?.kind === near.kind) ?? it)) : null,
         log: s.log.slice(-3).map((l) => ({ text: l.text, color: l.color, age: s.time - l.at })),
         banner: s.banner ? { text: s.banner.text, sub: s.banner.sub, color: s.banner.color } : null,
+        toast: s.toast ? { text: s.toast.text, color: s.toast.color } : null,
         boss: boss ? { name: t(boss.def.name), hp: boss.hp, max: boss.maxHp } : null,
         buffs: [h.buffs.strength > 0 ? tr('voima', 'strength') : '', h.buffs.speed > 0 ? tr('nopeus', 'speed') : '', h.buffs.poison > 0 ? tr('myrkky', 'poison') : ''].filter(Boolean),
       });
@@ -194,7 +198,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         if (ov.kind === 'none') setOverlay({ kind: 'pause' });
         else setOverlay({ kind: 'none' });
       }
-      for (const [key, tab] of [['m', 'map'], ['i', 'pack'], ['c', 'character'], ['t', 'tree']] as const) {
+      for (const [key, tab] of [['m', 'map'], ['i', 'pack'], ['b', 'pack'], ['c', 'character'], ['t', 'tree']] as const) {
         if (input.edge(key)) setOverlay(ov.kind === 'sheet' && ov.tab === tab ? { kind: 'none' } : { kind: 'sheet', tab });
       }
       const t0 = performance.now();
@@ -348,6 +352,9 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         <button className="minimap" data-ui onClick={() => openSheet('map')} aria-label={tr('Kartta', 'Map')}>
           <canvas ref={miniRef} />
         </button>
+        <button className="iconbtn bag" data-ui onClick={() => openSheet('pack')} aria-label={tr('Reppu', 'Pack')}>
+          🎒{hud && hud.packCount > 0 && <b>{hud.packCount}</b>}
+        </button>
         <button className={`iconbtn ${hud && hud.points > 0 ? 'pulse' : ''}`} data-ui onClick={() => openSheet(hud && hud.points > 0 ? 'tree' : 'character')} aria-label={tr('Hahmo', 'Character')}>
           {hud && hud.points > 0 ? '✦' : '☰'}
         </button>
@@ -359,6 +366,13 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
       {/* What the walk-over rule left under the hero: one line in the left
           column, out of the play area (docs/loot-ui.md). A tap opens the
           comparison as a paused overlay; E takes it into the hand of its kind. */}
+      {/* under the HUD block: where a swapped item went, then the loot chip */}
+      <div className="under">
+      {hud?.toast && (
+        <div className="itoast" key={hud.toast.text} style={{ color: hud.toast.color }}>
+          {hud.toast.text}
+        </div>
+      )}
       {hud?.near && h.near !== null && (
         <button className="lootchip" data-ui style={{ borderColor: RARITY_COLOR[hud.near.rarity] }} onClick={() => setOverlay({ kind: 'loot', id: h.near! })}>
           <span className="lname" style={{ color: RARITY_COLOR[hud.near.rarity] }}>
@@ -371,6 +385,7 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
           </span>
         </button>
       )}
+      </div>
 
       {/* The bottom half is the controls, drawn always as faint outlines so a
           new player sees where to touch: the move ring where the left thumb

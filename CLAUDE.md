@@ -94,6 +94,9 @@ scripts/floor-shots.mjs make floor-shots: whole floors as images, three
 scripts/screen-check.mjs make screen-check: the play screen on an iPhone
                           from the home screen (safe area stood in) and in
                           Safari; the install hint
+scripts/charge-check.mjs make charge-check: a charge survives walking, a
+                          drift and a second touch; a part charge fires with that much
+scripts/sheets-check.mjs make sheets-check: every sheet survives a rotation
 scripts/icons.mjs       make icons: the home-screen PNGs from public/icon.svg
 public/mockups/         the design mockups and their shooter
 ```
@@ -155,7 +158,8 @@ public/mockups/         the design mockups and their shooter
 
 - `make dev` (http://localhost:5173, also on the LAN for a phone).
 - **Before committing:** `make check` (typecheck, build, `sim-check`,
-  `gauntlet`, `loot-check`, `screen-check`, `phone-run`) must pass. `phone-run` drives an emulated iPhone,
+  `gauntlet`, `loot-check`, `screen-check`, `charge-check`, `sheets-check`,
+  `phone-run`) must pass. `phone-run` drives an emulated iPhone,
   so it needs `make shots-setup` once.
 - **Balance with `make balance [RUNS=6] [STYLE=best|sword|bow] [WHO=bot|human]`.**
 - **URL knobs:** `?seed=N` fixes the run, `?safe=l,r,t,b` stands in the

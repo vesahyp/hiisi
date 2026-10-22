@@ -24,12 +24,13 @@ sormen, ja pito lataa: jousi jännittyy, miekka vetäytyy lyöntiin, ja nosto
 laukaisee. Ladattu miekka myös torjuu edestä, kun Torjunta on opittu.
 Oikean renkaan ympärillä kaaressa ovat tekniikat, juoma ja käden vaihto. Kaksi tekniikkanappia oikean
 peukalon yllä tulevat taitopuusta. ⇄ vaihtaa kättä, 🧪 juo
-parannusjuoman. Pienoiskartta avaa koko kerroksen; ☰ avaa hahmon,
-taitopuun ja repun.
+parannusjuoman. Pienoiskartta avaa koko kerroksen; 🎒 avaa repun yhdellä
+napautuksella ja näyttää esineiden määrän; ☰ avaa hahmon ja taitopuun.
 
 **Näppäimistöllä:** WASD kävelee, hiiri tähtää, klikkaus lyö tai ampuu,
 pito jännittää tai torjuu. Q vaihtaa kättä, 1 ja 2 ovat tekniikat, R juo,
-E ottaa, C T I M avaavat hahmon, taitopuun, repun ja kartan, Esc on tauko.
+E ottaa, C T I M avaavat hahmon, taitopuun, repun (myös B) ja kartan,
+Esc on tauko.
 
 ## Kierros
 

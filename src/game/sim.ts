@@ -163,6 +163,10 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
     s.banner.life -= dt;
     if (s.banner.life <= 0) s.banner = null;
   }
+  if (s.toast) {
+    s.toast.life -= dt;
+    if (s.toast.life <= 0) s.toast = null;
+  }
   for (const x of s.texts) {
     x.life -= dt;
     x.y -= 22 * dt;
@@ -387,9 +391,12 @@ function placeOld(s: SimState, h: Hero, old: Item | null, x: number, y: number):
   if (!old) return null;
   if (h.pack.length < PACK_SIZE) {
     h.pack.push(old);
+    h.lastStowed = old.id;
+    s.toast = { text: `${t(old.name)} → ${tr('reppu', 'pack')}`, color: '#b8c8a8', life: 3.5 };
     return 'pack';
   }
   dropItem(s, x, y, old);
+  s.toast = { text: `${t(old.name)} → ${tr('lattia', 'floor')}`, color: '#ff8a70', life: 3.5 };
   return 'floor';
 }
 
@@ -522,7 +529,10 @@ export function equip(s: SimState, h: Hero, it: Item, slot: 0 | 1): void {
   const old = h.hands[slot];
   h.hands[slot] = it;
   h.pack = h.pack.filter((x) => x !== it);
-  if (old) h.pack.push(old);
+  if (old) {
+    h.pack.push(old);
+    h.lastStowed = old.id;
+  }
   h.active = slot;
   h.swing = null;
   h.draw = 0;

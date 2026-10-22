@@ -91,6 +91,8 @@ export interface Hero {
   hits: number;
   /** the drop under the hero */
   near: number | null;
+  /** the item last put into the pack by a swap, highlighted when the pack opens */
+  lastStowed: number | null;
   /** the aim the renderer shows */
   aimShow: { on: boolean; x: number; y: number };
   swapCd: number;
@@ -151,6 +153,8 @@ export interface Projectile {
   pierce: number;
   hit: Set<number>;
   kind: 'arrow' | 'enemyArrow' | 'rain' | 'anchor' | 'ball';
+  /** the charge behind a hero's shot, as its damage multiplier */
+  power?: number;
   /** the anchor: the enemies it has hooked, dragged in when it turns */
   hooked?: number[];
   /** the anchor on its way back */
@@ -245,6 +249,8 @@ export interface SimState {
   effects: Effect[];
   log: LogLine[];
   banner: Banner | null;
+  /** a short line by the hands: where a swapped item went */
+  toast: { text: string; color: string; life: number } | null;
   nextId: number;
   /** the potion colours this run gave each kind */
   potionColors: Record<PotionKind, string>;
@@ -307,6 +313,7 @@ export function createHero(): Hero {
     hurtFlash: 0,
     hits: 0,
     near: null,
+    lastStowed: null,
     aimShow: { on: false, x: 0, y: 0 },
     swapCd: 0,
   };
@@ -329,6 +336,7 @@ export function createState(seed: number, dungeon: Dungeon): SimState {
     effects: [],
     log: [],
     banner: null,
+    toast: null,
     nextId: 1,
     potionColors: { heal: '', strength: '', speed: '', poison: '' },
     run: { kills: 0, floor: 1, bosses: 0, bestRarity: 0, items: 0 },

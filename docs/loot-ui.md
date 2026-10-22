@@ -80,6 +80,29 @@ stays clear**, in both orientations.
 - **Portrait.** The camera keeps the hero in the upper part of the
   screen (15 % of the view above centre), so the controls own the bottom
   half and the hero's part of the screen stays clear.
+- **Where the thumbs rest.** Vesa's sixth playtest: the rings sat too
+  near the centre. Held sideways, a phone's thumbs rest about 13 % of the
+  width in from the edges and low; the ring centres go there (never
+  inside the notch's inset), the arc wraps the right ring on its inner
+  side, and in portrait the rings sit 18 % in.
+- **A charge survives walking.** A thumb down longer than a tap is a
+  hold whether or not it drifts; a drift is the aim while it holds, and
+  the release fires the charge along the drag. The old input dropped the
+  charge on a drift of 16 px and fired a tap on the lift. `charge-check`
+  holds, walks with a second touch in six directions, drifts the right
+  thumb, lifts the left, and fails if the charge drops; it also asserts a
+  part charge fires with that much.
+- **A swap says where the old thing went** as a toast by the hands
+  ("Ruosteinen nuija → reppu"), and the pack opens with that item
+  selected and glowing. The pack grid is fixed-size cells, as many
+  columns as fit, 54 px in a short landscape so all twelve show; a sheet
+  that still scrolls shows a fade at its bottom.
+- **Rotation.** iOS does not always resize a fixed body after a turn, so
+  the root is sized from the live viewport on every resize, orientation
+  change and visual-viewport change (twice, since iOS reports the old
+  size at the moment of the event), sheets scroll to their top, and
+  nothing scrolls sideways. `sheets-check` opens every sheet, turns the
+  viewport and back, and fails on overflow, overlap or a cut-off header.
 - **The proof.** `screen-check` asserts every element inside the safe
   area, both rings and every button in the bottom half on their own
   side, and the rings dashed before a touch; `loot-check` asserts that no

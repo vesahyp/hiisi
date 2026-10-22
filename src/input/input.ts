@@ -145,16 +145,18 @@ export class InputController {
         st.touchId = null;
         st.active = false;
         if (st === this.aim) {
+          // a thumb down longer than a tap was a hold, whether or not it
+          // drifted: the release fires the charge along the drag if there
+          // was one, else at the nearest enemy; a quick lift is a tap, a
+          // quick drag an aimed attack
           const held = (performance.now() - st.since) / 1000;
-          if (st.dragged) {
-            this.attackEdge = true;
-            this.attackAim = this.stickVec(st);
-          } else if (held < TAP) {
-            this.attackEdge = true;
-            this.attackAim = { x: 0, y: 0 };
-          } else {
+          const vec = st.dragged ? this.stickVec(st) : { x: 0, y: 0 };
+          if (held >= TAP) {
             this.releaseEdge = true;
-            this.attackAim = { x: 0, y: 0 };
+            this.attackAim = vec;
+          } else {
+            this.attackEdge = true;
+            this.attackAim = vec;
           }
         }
         st.dragged = false;
@@ -245,13 +247,16 @@ export class InputController {
       }
     }
     const now = performance.now();
-    if (this.aim.active && this.aim.dragged) {
-      const v = this.stickVec(this.aim);
-      inp.aiming = true;
-      inp.aimX = v.x;
-      inp.aimY = v.y;
-    } else if (this.aim.active && (now - this.aim.since) / 1000 >= TAP) {
-      inp.hold = true;
+    if (this.aim.active) {
+      // the right thumb down: a hold once past the tap time, and the drag
+      // (if any) is the aim while it holds, so a drift never drops a charge
+      if (this.aim.dragged) {
+        const v = this.stickVec(this.aim);
+        inp.aiming = true;
+        inp.aimX = v.x;
+        inp.aimY = v.y;
+      }
+      if ((now - this.aim.since) / 1000 >= TAP) inp.hold = true;
     } else if (this.mouse.seen && !this.usedTouch) {
       const v = this.mouseAim();
       inp.aiming = true;

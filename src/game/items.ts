@@ -60,7 +60,8 @@ export const POTION_WHAT: Record<PotionKind, Text> = {
   poison: L('Myrkyttää: elämä valuu hetken.', 'Poisons: health drains for a while.'),
 };
 
-const BOW_BASE: Text[] = [L('jousi', 'bow'), L('pitkäjousi', 'longbow'), L('metsästysjousi', 'hunting bow')];
+const BOW_BASE: Text[] = [L('jousi', 'bow')];
+const BOW_RARE: Text[] = [L('pitkäjousi', 'longbow'), L('metsästysjousi', 'hunting bow')];
 const COAT_BASE: Text[] = [L('villatakki', 'wool coat'), L('nahkatakki', 'leather coat'), L('turkki', 'fur coat')];
 const RARITY_WORD: Text[] = [L('Ruosteinen', 'Rusty'), L('Kunnon', 'Sound'), L('Hiiden', "Hiisi's"), L('Louhen', "Louhi's"), L('Väinön', "Väinö's")];
 const COAT_WORD: Text[] = [L('Kulunut', 'Worn'), L('Lämmin', 'Warm'), L('Vahva', 'Sturdy'), L('Louhen', "Louhi's"), L('Väinön', "Väinö's")];
@@ -113,7 +114,8 @@ const blank = (kind: ItemKind, rarity: number, level: number): Item => ({
 export function rollWeapon(rng: Rng, kind: MeleeKind | 'bow', level: number, rarity: number): Item {
   const it = blank(kind, rarity, level);
   const fam = isMelee(kind) ? FAMILY[kind] : null;
-  const base = fam ? rng.pick(fam.bases) : rng.pick(BOW_BASE);
+  // common items carry the word everyone knows; the rarer words are for blue and up
+  const base = rarity >= 2 ? rng.pick(fam ? fam.rareBases : BOW_RARE) : rng.pick(fam ? fam.bases : BOW_BASE);
   // damage: the level sets the floor, the rarity the budget
   const scale = (1 + level * 0.18) * (1 + rarity * 0.22);
   const lo = fam ? fam.lo : 7;

@@ -81,8 +81,11 @@ for (const [orient, viewport] of [['portrait', devices['iPhone 15'].viewport], [
     const swapped = await page.evaluate(() => ({ count: window.__count(), hand2: window.__sim.hero.hands[1].kind, packHasBow: window.__sim.hero.pack.some((x) => x.id === window.__sim.hero.hands[1].id) || window.__sim.hero.pack.some((x) => x.kind === 'bow'), log: window.__sim.log[window.__sim.log.length - 1].text }));
     check(swapped.count === countBefore && swapped.hand2 === 'sword' && swapped.packHasBow && /reppuun/.test(swapped.log), `${orient}: a swap into the other hand keeps the bow in the pack and says so ("${swapped.log}")`);
     void bowBefore;
-    // the pack sheet swaps it back in one tap
-    await page.keyboard.press('i');
+    // the pack sheet, one tap on the bag button, swaps it back in one tap
+    await page.waitForTimeout(200);
+    const bagCount = await page.locator('.iconbtn.bag b').textContent().catch(() => '0');
+    check(Number(bagCount) === await page.evaluate(() => window.__sim.hero.pack.length), `${orient}: the bag button shows the pack count (${bagCount})`);
+    await page.locator('.iconbtn.bag').tap();
     await page.waitForSelector('.overlay.sheet', { timeout: 3000 });
     await page.locator('.pack .cell').filter({ hasText: /jousi/i }).first().tap();
     await page.locator('.choice .btn').nth(1).tap();

@@ -66,6 +66,9 @@ try {
     }
     // the bottom half is the controls: the rings sit in it, left and right, and the arc stays right of the middle
     check(r.move && (r.move.t + r.move.b) / 2 > r.vh / 2 && r.move.r < r.vw / 2, `${c.name}: the move ring sits in the bottom left quarter`);
+    const mc = (r.move.l + r.move.r) / 2;
+    const ac = (r.attack.l + r.attack.r) / 2;
+    check(mc <= Math.max(0.16 * r.vw, S.l + 60) && r.vw - ac <= Math.max(0.16 * r.vw, S.r + 60), `${c.name}: the ring centres sit where the thumbs rest, within 16 % of the width from the edges (${Math.round((100 * mc) / r.vw)} % and ${Math.round((100 * (r.vw - ac)) / r.vw)} %)`);
     check(r.attack && (r.attack.t + r.attack.b) / 2 > r.vh / 2 && r.attack.l > r.vw / 2, `${c.name}: the attack ring sits in the bottom right quarter`);
     check([r.ctl, r.swap, r.potion].every((q) => q && q.l >= r.vw / 2 - 1), `${c.name}: every button stays right of the middle`);
     check([r.ctl, r.swap, r.potion].every((q) => q && (q.t + q.b) / 2 >= r.vh / 2 - 4), `${c.name}: every button sits in the bottom half (technique centre y ${Math.round((r.ctl.t + r.ctl.b) / 2)} of ${r.vh})`);

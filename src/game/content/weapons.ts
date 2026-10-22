@@ -18,7 +18,10 @@ export interface Family {
   name: Text;
   /** the name of a fighter who leads with it */
   fighter: Text;
+  /** names for junk and common items: words a Finn knows at a glance */
   bases: Text[];
+  /** names from blue up: the rarer words */
+  rareBases: Text[];
   icon: string;
   /** damage per hit at level 1, rarity 0 */
   lo: number;
@@ -54,49 +57,49 @@ export interface Family {
 
 export const FAMILIES: Family[] = [
   {
-    kind: 'sword', name: L('Miekka', 'Sword'), fighter: L('Miekkamies', 'Swordsman'), bases: [L('miekka', 'sword'), L('säilä', 'blade'), L('kalpa', 'broadsword')], icon: '🗡',
+    kind: 'sword', name: L('Miekka', 'Sword'), fighter: L('Miekkamies', 'Swordsman'), bases: [L('miekka', 'sword')], rareBases: [L('säilä', 'blade'), L('kalpa', 'broadsword')], icon: '🗡',
     lo: 9, hi: 14, swing: 1, lock: 0.6, wind: 0.8, reach: 44, width: 1.05, shape: 'arc', lunge: 10, knock: 100, heavy: false, guard: true, effect: 'none', full: 'none',
     affixes: ['sharp', 'quick', 'long', 'heavy'], sound: 'swing', weight: 3,
     what: L('Nopea kaari ja askel eteen. Ladattuna torjuu edestä, kun Torjunta on opittu.', 'A quick arc and a step forward. Wound up, it guards from the front once Parry is learned.'),
   },
   {
-    kind: 'axe', name: L('Kirves', 'Axe'), fighter: L('Kirvesmies', 'Axeman'), bases: [L('kirves', 'axe'), L('tappara', 'war axe'), L('piilu', 'broad axe')], icon: '🪓',
+    kind: 'axe', name: L('Kirves', 'Axe'), fighter: L('Kirvesmies', 'Axeman'), bases: [L('kirves', 'axe')], rareBases: [L('tappara', 'war axe'), L('piilu', 'hewing axe')], icon: '🪓',
     lo: 12, hi: 20, swing: 1.5, lock: 0.9, wind: 1.0, reach: 48, width: 1.75, shape: 'arc', lunge: 6, knock: 260, heavy: true, guard: false, effect: 'bleed', full: 'none',
     affixes: ['sharp', 'long', 'heavy'], sound: 'cleave', weight: 2,
     what: L('Leveä, hidas halkaisu. Osuma lennättää ja jättää vuotamaan kolmeksi sekunniksi.', 'A wide slow cleave. A hit sends them flying and leaves them bleeding for three seconds.'),
   },
   {
-    kind: 'mace', name: L('Nuija', 'Mace'), fighter: L('Nuijamies', 'Maceman'), bases: [L('nuija', 'mace'), L('vasara', 'hammer'), L('kurikka', 'club')], icon: '🔨',
+    kind: 'mace', name: L('Nuija', 'Mace'), fighter: L('Nuijamies', 'Maceman'), bases: [L('nuija', 'mace')], rareBases: [L('sotanuija', 'war mace'), L('vasara', 'hammer')], icon: '🔨',
     lo: 14, hi: 22, swing: 1.6, lock: 1.0, wind: 1.1, reach: 42, width: 0.95, shape: 'arc', lunge: 4, knock: 140, heavy: true, guard: false, effect: 'stagger', full: 'slam',
     affixes: ['sharp', 'heavy', 'quick'], sound: 'maul', weight: 2,
     what: L('Hidas ja raskas: joka osuma horjuttaa. Täysi lataus on maaisku, joka osuu ympärillesi ja murtaa panssarin viideksi sekunniksi.', 'Slow and heavy: every hit staggers. A full charge is a ground slam all round you that breaks armour for five seconds.'),
   },
   {
-    kind: 'spear', name: L('Keihäs', 'Spear'), fighter: L('Keihäsmies', 'Spearman'), bases: [L('keihäs', 'spear'), L('hanko', 'pike'), L('seiväs', 'lance')], icon: '🔱',
+    kind: 'spear', name: L('Keihäs', 'Spear'), fighter: L('Keihäsmies', 'Spearman'), bases: [L('keihäs', 'spear')], rareBases: [L('peitsi', 'lance'), L('hanko', 'pike')], icon: '🔱',
     lo: 10, hi: 15, swing: 1.1, lock: 0.7, wind: 0.8, reach: 82, width: 12, shape: 'line', lunge: 8, knock: 340, heavy: false, guard: true, effect: 'push', full: 'run',
     affixes: ['sharp', 'quick', 'long'], sound: 'thrust', weight: 2,
     what: L('Pitkä pisto suoraa linjaa: osuu kaikkiin linjalla ja työntää ne kauemmas. Täysi lataus on juoksupisto.', 'A long thrust down a line: hits everyone on it and pushes them away. A full charge is a running thrust.'),
   },
   {
-    kind: 'dagger', name: L('Tikari', 'Dagger'), fighter: L('Puukkojunkkari', 'Knife fighter'), bases: [L('tikari', 'dagger'), L('puukko', 'knife'), L('väkipuukko', 'long knife')], icon: '🔪',
+    kind: 'dagger', name: L('Tikari', 'Dagger'), fighter: L('Puukkojunkkari', 'Knife fighter'), bases: [L('tikari', 'dagger'), L('puukko', 'knife')], rareBases: [L('väkipuukko', 'long knife')], icon: '🔪',
     lo: 6, hi: 9, swing: 0.6, lock: 0.3, wind: 0.5, reach: 30, width: 0.7, shape: 'arc', lunge: 8, knock: 40, heavy: false, guard: false, effect: 'backstab', full: 'none',
     affixes: ['sharp', 'quick'], sound: 'stab', weight: 2,
     what: L('Hyvin nopea, lyhyt. Ei torju. Kolminkertainen viholliseen, joka ei ole huomannut sinua.', 'Very fast and short. No guard. Triple damage on an enemy that has not noticed you.'),
   },
   {
-    kind: 'flail', name: L('Varsta', 'Flail'), fighter: L('Varstamies', 'Flailman'), bases: [L('varsta', 'flail'), L('kuulaketju', 'ball and chain'), L('piikkikuula', 'morning star')], icon: '⛓',
+    kind: 'flail', name: L('Varsta', 'Flail'), fighter: L('Varstamies', 'Flailman'), bases: [L('varsta', 'flail')], rareBases: [L('kuulaketju', 'ball and chain'), L('piikkikuula', 'morning star')], icon: '⛓',
     lo: 11, hi: 17, swing: 1.2, lock: 0.8, wind: 1.3, reach: 46, width: 1.0, shape: 'orbit', lunge: 0, knock: 180, heavy: true, guard: false, effect: 'none', full: 'none',
     affixes: ['sharp', 'heavy', 'long'], sound: 'whirl', weight: 1.2,
     what: L('Pito pyörittää kuulaa ympärilläsi: se osuu mihin sattuu. Liike syöttää pyörintää. Nosto heittää kuulan suoraan eteen.', 'Hold and the ball orbits you, hitting what it meets. Moving feeds the spin. The release hurls the ball straight ahead.'),
   },
   {
-    kind: 'scythe', name: L('Viikate', 'Scythe'), fighter: L('Viikatemies', 'Reaper'), bases: [L('viikate', 'scythe'), L('kuolonviikate', 'reaper')], icon: '⚰',
+    kind: 'scythe', name: L('Viikate', 'Scythe'), fighter: L('Viikatemies', 'Reaper'), bases: [L('viikate', 'scythe')], rareBases: [L('kuolonviikate', 'reaper')], icon: '⚰',
     lo: 13, hi: 21, swing: 1.8, lock: 1.1, wind: 1.1, reach: 52, width: Math.PI, shape: 'ring', lunge: 0, knock: 120, heavy: true, guard: false, effect: 'reap', full: 'none',
     affixes: ['sharp', 'long'], sound: 'reap', weight: 1,
     what: L('Yksi hidas täysi ympyrä: osuu kaikkiin ympärilläsi. Tappo palauttaa vähän elämää.', 'One slow full circle: hits everything round you. A kill gives a little health back.'),
   },
   {
-    kind: 'anchor', name: L('Ankkuri', 'Anchor'), fighter: L('Ankkurimies', 'Anchorman'), bases: [L('ankkuri', 'anchor'), L('ketjuankkuri', 'chained anchor')], icon: '⚓',
+    kind: 'anchor', name: L('Ankkuri', 'Anchor'), fighter: L('Ankkurimies', 'Anchorman'), bases: [L('ankkuri', 'anchor')], rareBases: [L('ketjuankkuri', 'chained anchor')], icon: '⚓',
     lo: 15, hi: 24, swing: 1.4, lock: 1.2, wind: 1.2, reach: 128, width: 14, shape: 'throw', lunge: 0, knock: 0, heavy: true, guard: false, effect: 'pull', full: 'none',
     affixes: ['sharp', 'heavy'], sound: 'chain', weight: 0.8,
     what: L('Lataus heittää ankkurin suoraan eteen ja vetää kaiken mihin se tarttuu jalkoihisi.', 'A charge hurls the anchor straight ahead and drags everything it hooks to your feet.'),

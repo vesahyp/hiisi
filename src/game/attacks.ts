@@ -184,9 +184,10 @@ export function updateSwing(s: SimState, h: Hero, dt: number): void {
         s.texts.push({ x: e.x, y: e.y - e.r - 22, text: tr('selkään', 'backstab'), color: '#c9b7ff', life: 1, size: 12 });
       }
       const dmg = rollDamage(s, h, it, mul);
-      const knock = sw.effect === 'push' ? f.knock : it.affix === 'heavy' ? f.knock * 2 : f.knock;
+      const power = sw.dmgMul;
+      const knock = (sw.effect === 'push' ? f.knock : it.affix === 'heavy' ? f.knock * 2 : f.knock) * (0.5 + 0.5 * power);
       const hpBefore = e.hp;
-      hurtEnemy(s, e, dmg, { skill: 'lahi', knock, angle: sw.shape === 'line' ? sw.angle : a, crit, what: f.kind });
+      hurtEnemy(s, e, dmg, { skill: 'lahi', knock, angle: sw.shape === 'line' ? sw.angle : a, crit, what: f.kind, power });
       if (e.dead) {
         if (sw.effect === 'reap') {
           h.hp = Math.min(heroStats(h).maxHp, h.hp + 3);
@@ -229,6 +230,7 @@ export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: numbe
       team: 0,
       dmg: rollDamage(s, h, it, mul),
       left: bowRange(it) * (0.7 + 0.3 * draw),
+      power: mul,
       pierce,
       hit: new Set(),
       kind: 'arrow',
@@ -277,7 +279,9 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     }
     const before = h.draw;
     h.draw = Math.min(1, h.draw + dt / (sword ? windTime(h, it) : drawTime(h, it)));
+    // a tick at every quarter of the charge, a different note at full
     if (h.draw >= 1 && before < 1) s.sounds.push('drawfull');
+    else if (Math.floor(h.draw * 4) !== Math.floor(before * 4)) s.sounds.push('drawstep');
     if (sword && fam?.guard && has(h, 'torjunta')) {
       if (h.parry < 0) h.parry = 0;
       else h.parry += dt;
@@ -520,7 +524,7 @@ export function updateProjectiles(s: SimState, dt: number): void {
             p.dead = true;
             break;
           }
-          hurtEnemy(s, e, p.dmg, { skill: p.skill, knock: 55, angle: Math.atan2(p.vy, p.vx), what: 'nuoli' });
+          hurtEnemy(s, e, p.dmg, { skill: p.skill, knock: 55 * (0.5 + 0.5 * (p.power ?? 1)), angle: Math.atan2(p.vy, p.vx), what: 'nuoli', power: p.power ?? 1 });
           if (p.pierce > 0) {
             p.pierce--;
             p.dmg = Math.round(p.dmg * 0.85);

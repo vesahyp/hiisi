@@ -20,6 +20,8 @@ export interface HitSource {
   angle: number;
   crit?: boolean;
   what: string;
+  /** the charge behind the hit, as its damage multiplier (0.6 a tap, 2 full): the number grows and the sound steps with it */
+  power?: number;
 }
 
 export function hurtEnemy(s: SimState, e: Enemy, dmg: number, src: HitSource): void {
@@ -32,9 +34,12 @@ export function hurtEnemy(s: SimState, e: Enemy, dmg: number, src: HitSource): v
     e.knock.vx += Math.cos(src.angle) * src.knock;
     e.knock.vy += Math.sin(src.angle) * src.knock;
   }
-  s.texts.push({ x: e.x + s.rng.range(-6, 6), y: e.y - e.r - 10, text: String(dmg), color: src.crit ? '#ffd040' : '#fff', life: 0.8, size: src.crit ? 16 : 13 });
-  s.effects.push({ kind: 'hit', x: e.x, y: e.y - e.r * 0.5, angle: src.angle, r: 10, life: 0.18, maxLife: 0.18, color: src.crit ? '#ffd040' : '#ffe9c0' });
-  s.sounds.push('hit');
+  const power = src.power ?? 1;
+  const size = Math.round((src.crit ? 16 : 12) + 5 * Math.max(0, power - 0.6));
+  s.texts.push({ x: e.x + s.rng.range(-6, 6), y: e.y - e.r - 10, text: String(dmg), color: src.crit ? '#ffd040' : power >= 1.5 ? '#ffe9a0' : '#fff', life: 0.8 + 0.2 * power, size });
+  s.effects.push({ kind: 'hit', x: e.x, y: e.y - e.r * 0.5, angle: src.angle, r: 8 + 6 * power, life: 0.18, maxLife: 0.18, color: src.crit ? '#ffd040' : '#ffe9c0' });
+  s.sounds.push(power >= 1.5 ? 'hitbig' : 'hit');
+  if (power >= 1.5) s.shake = Math.max(s.shake, 0.25);
   const h = s.hero;
   h.hits++;
   // a hit on something that still gives experience trains the hand

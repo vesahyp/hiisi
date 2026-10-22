@@ -258,20 +258,25 @@ export function weaponSprite(it: Item): Sprite {
         c.stroke();
         return;
       case 'axe':
-        haft(-8, 14);
+        // a long haft, and a bit standing across it: a blade head with a curved edge, a flat poll behind
+        haft(-12, 16);
         c.fillStyle = steel;
         c.strokeStyle = '#1a1c1e';
         c.lineWidth = 1.2;
         c.beginPath();
-        c.moveTo(10, -1);
-        c.quadraticCurveTo(18, -10, 24, -8);
-        c.quadraticCurveTo(22, 0, 24, 8);
-        c.quadraticCurveTo(18, 10, 10, 1);
+        c.moveTo(11, -3);
+        c.lineTo(15, -11);
+        c.quadraticCurveTo(26, -10, 27, 0);
+        c.quadraticCurveTo(26, 10, 15, 11);
+        c.lineTo(11, 3);
         c.closePath();
         c.fill();
         c.stroke();
+        c.fillStyle = '#6a6e74';
+        c.fillRect(6, -3.5, 6, 7);
+        c.strokeRect(6, -3.5, 6, 7);
         c.fillStyle = col;
-        c.fillRect(9, -2, 3, 4);
+        c.fillRect(8, -1.5, 2.5, 3);
         return;
       case 'mace':
         haft(-8, 14);

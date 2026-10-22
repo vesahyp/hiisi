@@ -24,12 +24,28 @@ const TABS: { id: Tab; name: [string, string] }[] = [
 /** The four screens over a paused run: the character, the tree, the pack, the map. */
 export function Sheets({ s, tab, renderer, onTab, onClose, onChange }: { s: SimState; tab: Tab; renderer: Renderer; onTab: (t: Tab) => void; onClose: () => void; onChange: () => void }) {
   const [, setTick] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = useState(false);
   const changed = () => {
     setTick((x) => x + 1);
     onChange();
   };
+  // does the sheet scroll: measured on every change and resize, so the fade shows only when rows are hidden below
+  useEffect(() => {
+    const measure = () => {
+      const el = ref.current;
+      if (el) setScrolls(el.scrollHeight > el.clientHeight + 2);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    const id = setTimeout(measure, 350);
+    return () => {
+      window.removeEventListener('resize', measure);
+      clearTimeout(id);
+    };
+  });
   return (
-    <div className="overlay sheet" data-ui>
+    <div className={`overlay sheet ${scrolls ? 'scrolls' : ''}`} data-ui ref={ref}>
       <div className="sheethead">
         <div className="tabs">
           {TABS.map((x) => (
@@ -302,9 +318,14 @@ function Tree({ s, onChange }: { s: SimState; onChange: () => void }) {
 
 function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
   const h = s.hero;
-  const [sel, setSel] = useState<Item | null>(h.hands[h.active] ?? h.pack[0] ?? null);
+  const stowed = h.pack.find((x) => x.id === h.lastStowed) ?? null;
+  const [sel, setSel] = useState<Item | null>(stowed ?? h.hands[h.active] ?? h.pack[0] ?? null);
+  const [fresh] = useState<number | null>(stowed ? stowed.id : null);
+  useEffect(() => {
+    h.lastStowed = null;
+  }, [h]);
   const cell = (it: Item | null, label: string, hand?: number) => (
-    <button key={it ? it.id : label} className={`cell ${it ? `b${it.rarity}` : 'empty'} ${it && sel === it ? 'sel' : ''}`} onClick={() => it && setSel(it)} disabled={!it}>
+    <button key={it ? it.id : label} className={`cell ${it ? `b${it.rarity}` : 'empty'} ${it && sel === it ? 'sel' : ''} ${it && it.id === fresh ? 'new' : ''}`} onClick={() => it && setSel(it)} disabled={!it}>
       {hand !== undefined && it && <span className={`hand ${h.active === hand ? 'on' : ''}`}>{hand + 1}</span>}
       {it && it.kind === 'potion' && it.potion && !h.known[it.potion] && <span className="unk">?</span>}
       <span className="ic">{it ? kindIcon(it) : ''}</span>
@@ -328,18 +349,21 @@ function Pack({ s, onChange }: { s: SimState; onChange: () => void }) {
           <span>{tr('KÄDESSÄ JA YLLÄ', 'IN HAND AND WORN')}</span>
           <span>{tr('napauta: kortti', 'tap: the card')}</span>
         </div>
-        <div className="worn">
-          {cell(h.hands[0], tr('käsi 1', 'hand 1'), 0)}
-          {cell(h.hands[1], tr('käsi 2', 'hand 2'), 1)}
-          {cell(h.coat, tr('takki', 'coat'))}
+        <div className="wornrow">
+          <div className="worn">
+            {cell(h.hands[0], tr('käsi 1', 'hand 1'), 0)}
+            {cell(h.hands[1], tr('käsi 2', 'hand 2'), 1)}
+            {cell(h.coat, tr('takki', 'coat'))}
+          </div>
+          <button className="btn ghost tiny" onClick={() => act(() => swapHands(s, h))}>
+            {tr('Vaihda kädet', 'Swap hands')}
+          </button>
         </div>
-        <button className="btn ghost tiny" style={{ marginTop: 6 }} onClick={() => act(() => swapHands(s, h))}>
-          {tr('Vaihda kädet keskenään', 'Swap the hands')}
-        </button>
-        <div className="h" style={{ marginTop: 10 }}>
+        <div className="h" style={{ marginTop: 8 }}>
           <span>
             {tr('REPPU', 'PACK')} {h.pack.length} / {PACK_SIZE}
           </span>
+          {stowed && <span style={{ color: '#fff' }}>{tr(`uusi: ${t(stowed.name)}`, `new: ${t(stowed.name)}`)}</span>}
         </div>
         <div className="pack">
           {h.pack.map((it) => cell(it, ''))}
