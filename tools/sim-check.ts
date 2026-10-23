@@ -287,6 +287,46 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   check('a full wind-up and release cycles about every one and a half seconds', wound >= 5 && wound <= 9, `${wound} heavy swings in 10 s`);
 }
 
+// ————— a swing goes toward the enemy, every time —————
+{
+  for (const kind of ['sword', 'axe', 'mace', 'spear', 'dagger'] as const) {
+    const s = newRun(9);
+    const h = s.hero;
+    arena(s);
+    h.active = 0;
+    h.invuln = 1e9;
+    h.hands[0] = rollWeapon(s.rng, kind, 1, 0);
+    const e = spawn(s, 'luuranko', h.x + 90, h.y, -1, false);
+    e.hp = 1e9;
+    e.aware = true;
+    e.mode = 'chase';
+    // kite: walk away, tap; step in, tap; four times, and every swing must face the enemy
+    const angles: number[] = [];
+    for (let k = 0; k < 6; k++) {
+      const mx = k % 2 ? 1 : -1;
+      for (let i = 0; i < 20; i++) step(s, inp({ mx, my: 0 }), DT);
+      step(s, inp({ attack: true, mx }), DT);
+      const toE = Math.atan2(e.y - h.y, e.x - h.x);
+      const a = h.swing ? h.swing.angle : h.facing;
+      angles.push(Math.abs(Math.atan2(Math.sin(a - toE), Math.cos(a - toE))));
+      for (let i = 0; i < 50; i++) step(s, inp({}), DT);
+    }
+    check(`every ${kind} swing while kiting faces the enemy, never the walk`, angles.every((x) => x < 1.0), angles.map((x) => Math.round((x * 180) / Math.PI) + '°').join(' '));
+  }
+  // a release with the thumb's lift drift is not an aim: the swing still faces the enemy
+  const s = newRun(9);
+  const h = s.hero;
+  arena(s);
+  h.active = 0;
+  h.invuln = 1e9;
+  const e = spawn(s, 'luuranko', h.x + 60, h.y, -1, false);
+  e.hp = 1e9;
+  for (let i = 0; i < 40; i++) step(s, inp({ hold: true }), DT);
+  step(s, inp({ holdRelease: true, aimX: -0.2, aimY: 0.15 }), DT);
+  const a = h.swing ? h.swing.angle : 9;
+  check('a release with a small lift drift still swings at the enemy', Math.abs(a) < 0.5, `${Math.round((a * 180) / Math.PI)}°`);
+}
+
 // ————— the melee families: each plays by its own rule —————
 {
   const s = newRun(9);

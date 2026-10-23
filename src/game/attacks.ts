@@ -70,12 +70,32 @@ export function chargeMul(charge: number): number {
   return 0.6 + 1.4 * Math.min(1, Math.max(0, charge));
 }
 
+/**
+ * Where an attack goes: along a real drag, else at the nearest enemy in
+ * sight within `range`, else the way the hero faces. A drag counts from
+ * a third of the stick, so the drift of a thumb lifting is not an aim.
+ * An enemy pressed against the hero is aimed by the facing, since the
+ * angle to its centre from a pixel away is noise.
+ */
+export const AIM_DRAG = 0.35;
 function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
-  if (Math.hypot(inp.aimX, inp.aimY) > 0.2) return Math.atan2(inp.aimY, inp.aimX);
+  if (Math.hypot(inp.aimX, inp.aimY) > AIM_DRAG) return Math.atan2(inp.aimY, inp.aimX);
   const e = nearestVisible(s, h, range);
-  if (e) return Math.atan2(e.y - h.y, e.x - h.x);
+  if (e) {
+    const dist = Math.hypot(e.x - h.x, e.y - h.y);
+    if (dist < h.r + e.r + 6) {
+      // touching: keep the facing if the enemy is roughly in front of it
+      const a = Math.atan2(e.y - h.y, e.x - h.x);
+      const diff = Math.abs(Math.atan2(Math.sin(a - h.facing), Math.cos(a - h.facing)));
+      return diff < 1.2 ? h.facing : a;
+    }
+    return Math.atan2(e.y - h.y, e.x - h.x);
+  }
   return h.facing;
 }
+
+/** How far a melee auto-aim looks for a target: four tiles, so a tap while kiting still turns to the enemy. */
+export const MELEE_AIM = 4 * T;
 
 export function startSwing(s: SimState, h: Hero, it: Item, angle: number, o: Partial<Swing> = {}): void {
   const f = familyOf(it);
@@ -286,9 +306,9 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
       if (h.parry < 0) h.parry = 0;
       else h.parry += dt;
     }
-    if (Math.hypot(inp.aimX, inp.aimY) > 0.2) h.facing = Math.atan2(inp.aimY, inp.aimX);
+    if (Math.hypot(inp.aimX, inp.aimY) > AIM_DRAG) h.facing = Math.atan2(inp.aimY, inp.aimX);
     else if (sword) {
-      const e = nearestVisible(s, h, 4 * T);
+      const e = nearestVisible(s, h, MELEE_AIM);
       if (e) h.facing = Math.atan2(e.y - h.y, e.x - h.x);
     }
   } else if (!inp.holdRelease) {
@@ -320,7 +340,7 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     }
   }
   const fire = (charge: number) => {
-    if (sword) release(s, h, it, aimAngle(s, h, inp, swordReach(h, it) * 1.6), charge);
+    if (sword) release(s, h, it, aimAngle(s, h, inp, Math.max(MELEE_AIM, swordReach(h, it) * 1.6)), charge);
     else shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), charge);
   };
   if (inp.holdRelease && h.drawing) {
@@ -355,7 +375,7 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
   switch (id) {
     case 'halkaisu': {
       // the weapon's heavy blow: half again as wide and as strong
-      const angle = aimAngle(s, h, inp, swordReach(h, it) * 1.8);
+      const angle = aimAngle(s, h, inp, Math.max(MELEE_AIM, swordReach(h, it) * 1.8));
       const f = familyOf(it);
       startSwing(s, h, it, angle, { width: f.shape === 'line' ? f.width * 2 : Math.min(Math.PI, f.width * 1.5), dmgMul: 1.5, reach: swordReach(h, it) * 1.15, dur: SWING_TIME * f.swing * 1.3 * it.speed });
       h.lock = swingLock(h, it) * 1.2;

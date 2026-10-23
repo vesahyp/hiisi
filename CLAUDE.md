@@ -129,32 +129,38 @@ public/mockups/         the design mockups and their shooter
    multiply it (`speedMul`), so 170, the first build's pace, is a late
    ranger's. Enemies, arrows, knockback and the lunge are set to the base
    pace; scale them with it.
-7. **A hold charges, the release fires, a tap is weak.** Both hands: the
+7. **An attack goes where the player aims, else at the enemy, else the
+   way they face** (`aimAngle`). A drag counts from a third of the stick,
+   so a thumb's lift drift is not an aim; a melee auto-aim looks four
+   tiles, so a tap while kiting turns to the enemy instead of swinging the
+   walk's way; an enemy pressed against the hero is aimed by the facing.
+   `sim-check` kites every family and fails if a swing faces away.
+8. **A hold charges, the release fires, a tap is weak.** Both hands: the
    bow draws, the sword winds up (and guards with Torjunta), for as long as
    the thumb stays down, to a cap at 1; the release fires with the charge
    (`chargeMul`: ×0.6 at a tap, ×2 at full), and the next draw or swing
    waits `NOCK` or `swingLock`. Skills and gear shorten the time to full
    (`drawMul`, `windMul`), never the cap. `sim-check` asserts the spam
    rate, the held draw, the damage curve and the cap.
-8. **Every enemy attack is slow enough to see.** A windup shows before a
+9. **Every enemy attack is slow enough to see.** A windup shows before a
    strike, the bear's charge draws its lane, enemy arrows fly slowly. The
    proof is `npm run gauntlet`: the human-limited bot must reach floor 3
    with either hand in most runs.
-9. **Skills rise only from hits on enemies that still give experience, and
+10. **Skills rise only from hits on enemies that still give experience, and
    never past the floor's cap** (`skillCap`). That is the rule that makes
    grinding impossible; do not add a way round it.
-10. **The save is the top of a floor.** `nextFloor` snapshots before the
+11. **The save is the top of a floor.** `nextFloor` snapshots before the
    floor spawns (`save.ts`); death clears it. Nothing mid-floor is saved.
-11. **Two languages, English in the code.** Every player-facing string is
+12. **Two languages, English in the code.** Every player-facing string is
    `L(fi, en)` or `tr(fi, en)`.
-12. **A body never catches on a corner.** `moveCircle` slides along walls
+13. **A body never catches on a corner.** `moveCircle` slides along walls
     and nudges round door frames and wall ends; `sim-check` pushes a body
     diagonally into corners and doorways and fails if it stops. Corridors
     are one to three tiles wide; areas are open enough to kite in.
-13. **Nothing in the HUD covers the hero's part of the screen.** Every
+14. **Nothing in the HUD covers the hero's part of the screen.** Every
     element lives in a column at an edge (`docs/loot-ui.md`); `loot-check`
     asserts it in portrait and in a short landscape viewport.
-14. **Prose style:** no em dashes, no "this, not that", no metaphors.
+15. **Prose style:** no em dashes, no "this, not that", no metaphors.
     Commit messages in English.
 
 ## Workflow

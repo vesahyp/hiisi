@@ -1,7 +1,7 @@
 import { createState, LAST_FLOOR, type Hero, type HeroInput, type SimState, type Enemy } from './state';
 import { freeSpot, generateDungeon, moveCircle, openDoorsNear, roomSpots, STAIRS_DOWN, T, tileAt, updateFlow, updateSeen, idxAt, VISIBLE, UNSEEN } from './dungeon';
 import { ENEMY_BY_ID, floorCast } from './content/enemies';
-import { heroAttack, updateDash, updateProjectiles, updateSwing } from './attacks';
+import { AIM_DRAG, heroAttack, updateDash, updateProjectiles, updateSwing } from './attacks';
 import { enemyStep, separate, springTraps } from './ai';
 import { dropItem } from './combat';
 import { has, held, heroStats } from './hero';
@@ -219,7 +219,7 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
     const k = (h.swing.lunge / (h.swing.dur * 0.45)) * dt;
     moveCircle(d, h, h.r, Math.cos(h.swing.angle) * k, Math.sin(h.swing.angle) * k);
   }
-  if (inp.aiming && Math.hypot(inp.aimX, inp.aimY) > 0.2 && !h.swing) h.facing = Math.atan2(inp.aimY, inp.aimX);
+  if (inp.aiming && Math.hypot(inp.aimX, inp.aimY) > AIM_DRAG && !h.swing) h.facing = Math.atan2(inp.aimY, inp.aimX);
   // a door opens to a hand on it: the reach covers a body pressed against the frame beside it
   if (openDoorsNear(d, h.x, h.y, h.r + 16) > 0) {
     s.sounds.push('door');
