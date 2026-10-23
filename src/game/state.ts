@@ -44,6 +44,20 @@ export interface Swing {
   /** twice: the whirl's second pass */
   passes: number;
   lunge: number;
+  /** seconds the hero recovers after the swing, open to hits */
+  recover: number;
+  /** a heavy weapon: a swing that hits nothing leaves the hero exposed */
+  heavy: boolean;
+}
+
+/** A released melee strike before it starts: the tap's windup, spent by a hold. */
+export interface Windup {
+  t: number;
+  dur: number;
+  angle: number;
+  charge: number;
+  /** aimed by a drag: the angle stays; else the strike turns to the nearest enemy when it starts */
+  aimed: boolean;
 }
 
 export interface Hero {
@@ -83,6 +97,18 @@ export interface Hero {
   parried: number;
   /** seconds before the next attack can start */
   lock: number;
+  /** the strike waiting for its windup to end */
+  windup: Windup | null;
+  /** seconds of recovery left after a strike: a slow walk, and hits hurt more */
+  open: number;
+  /** the recovery is a missed heavy swing's: slower still, and hits hurt most */
+  exposed: boolean;
+  /** 0..STAMINA_MAX; a melee strike spends it, rest refills it */
+  stamina: number;
+  /** the bar ran empty: strikes are slow and weak until it refills to half */
+  winded: boolean;
+  /** seconds before the bar starts to refill after a strike */
+  rest: number;
   dash: { t: number; dx: number; dy: number; target: number } | null;
   buffs: { strength: number; speed: number; poison: number };
   invuln: number;
@@ -327,6 +353,12 @@ export function createHero(): Hero {
     parry: -1,
     parried: 0,
     lock: 0,
+    windup: null,
+    open: 0,
+    exposed: false,
+    stamina: 100,
+    winded: false,
+    rest: 0,
     dash: null,
     buffs: { strength: 0, speed: 0, poison: 0 },
     invuln: 0,

@@ -474,7 +474,7 @@ export class Renderer {
   private hero(ctx: CanvasRenderingContext2D, _s: SimState, h: Hero): void {
     const it = held(h);
     // the aim: the sword's arc or the bow's line
-    if (it && (h.aimShow.on || h.drawing || h.parry >= 0)) {
+    if (it && (h.aimShow.on || h.drawing || h.parry >= 0 || h.windup)) {
       const a = h.aimShow.on && Math.hypot(h.aimShow.x, h.aimShow.y) > 0.2 ? Math.atan2(h.aimShow.y, h.aimShow.x) : h.facing;
       if (isMelee(it.kind)) {
         // the hit shape, drawn where it would land: an arc, a thrust line, a ring
@@ -547,11 +547,14 @@ export class Renderer {
     ctx.beginPath();
     ctx.ellipse(h.x, h.y + 9, 9, 4, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = h.invuln > 0 ? 'rgba(255,255,255,0.7)' : '#6ab0ff';
-    ctx.lineWidth = 2;
+    // the ring under the hero: white just hit, red exposed after a missed heavy swing, orange in a recovery, grey and broken when winded
+    ctx.strokeStyle = h.invuln > 0 ? 'rgba(255,255,255,0.7)' : h.open > 0 ? (h.exposed ? '#ff4a3a' : '#ffa050') : h.winded ? '#9a9a9a' : '#6ab0ff';
+    ctx.lineWidth = h.open > 0 && h.exposed ? 3 : 2;
+    if (h.winded && h.open <= 0) ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.ellipse(h.x, h.y + 9, 12, 5.5, 0, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
     const frame = h.moving ? 1 + (Math.floor(h.walk) % 2) : 0;
     const flip = Math.cos(h.facing) < 0;
     if (h.hurtFlash > 0) ctx.filter = 'brightness(2)';
@@ -585,7 +588,11 @@ export class Renderer {
       ctx.save();
       ctx.translate(h.x + Math.cos(h.facing) * 7, h.y - 2 + Math.sin(h.facing) * 4);
       let a = h.facing;
-      if (h.swing) {
+      if (h.windup) {
+        // drawn back against the swing, the further the longer the windup has run
+        const f = 1 - h.windup.t / h.windup.dur;
+        a = h.facing - (isMelee(it.kind) ? Math.min(1.6, FAMILY[it.kind].width + 0.4) : 0) * f;
+      } else if (h.swing) {
         const f = h.swing.t / h.swing.dur;
         a = h.swing.angle + (f < 0.45 ? -h.swing.width + (f / 0.45) * h.swing.width * 2 : h.swing.width - ((f - 0.45) / 0.55) * h.swing.width * 0.5);
       }

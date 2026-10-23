@@ -16,7 +16,9 @@ import { hitsToNext, skillCap } from '../src/game/skills';
 import { restore, snapshot } from '../src/game/save';
 import { botInput, botSpend, BOT, HUMAN } from './autoplayer';
 import { enemyDamage, enemySpeed } from '../src/game/ai';
-import { hurtEnemy, wake, dropItem } from '../src/game/combat';
+import { hurtEnemy, hurtHero, wake, dropItem } from '../src/game/combat';
+import { STAMINA_MAX, staminaCost } from '../src/game/attacks';
+import type { MeleeKind } from '../src/game/content/weapons';
 import { Rng } from '../src/game/rng';
 import { rollWeapon } from '../src/game/items';
 
@@ -289,7 +291,7 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
 
 // ————— a swing goes toward the enemy, every time —————
 {
-  for (const kind of ['sword', 'axe', 'mace', 'spear', 'dagger'] as const) {
+  for (const kind of ['sword', 'axe', 'mace', 'spear', 'dagger', 'scythe'] as const) {
     const s = newRun(9);
     const h = s.hero;
     arena(s);
@@ -306,6 +308,8 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
       const mx = k % 2 ? 1 : -1;
       for (let i = 0; i < 20; i++) step(s, inp({ mx, my: 0 }), DT);
       step(s, inp({ attack: true, mx }), DT);
+      // the walk goes on through the windup; the strike must still turn to the enemy
+      for (let i = 0; i < 60 && h.windup; i++) step(s, inp({ mx }), DT);
       const toE = Math.atan2(e.y - h.y, e.x - h.x);
       const a = h.swing ? h.swing.angle : h.facing;
       angles.push(Math.abs(Math.atan2(Math.sin(a - toE), Math.cos(a - toE))));
@@ -323,8 +327,137 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   e.hp = 1e9;
   for (let i = 0; i < 40; i++) step(s, inp({ hold: true }), DT);
   step(s, inp({ holdRelease: true, aimX: -0.2, aimY: 0.15 }), DT);
+  for (let i = 0; i < 60 && !h.swing; i++) step(s, inp({}), DT);
   const a = h.swing ? h.swing.angle : 9;
   check('a release with a small lift drift still swings at the enemy', Math.abs(a) < 0.5, `${Math.round((a * 180) / Math.PI)}°`);
+}
+
+// ————— stamina and rhythm: a strike has a price and a recovery —————
+{
+  const s = newRun(9);
+  const h = s.hero;
+  arena(s);
+  h.active = 0;
+  h.invuln = 1e9;
+  const home = { x: h.x, y: h.y };
+  const fresh = (kind: MeleeKind) => {
+    h.x = home.x;
+    h.y = home.y;
+    h.hands[0] = rollWeapon(s.rng, kind, 1, 0);
+    h.hands[0].speed = 1;
+    h.lock = 0;
+    h.swing = null;
+    h.windup = null;
+    h.open = 0;
+    h.exposed = false;
+    h.stamina = STAMINA_MAX;
+    h.winded = false;
+    h.rest = 0;
+    h.skills.lahi.lvl = 0;
+    s.enemies = [];
+  };
+  // a tap on an enemy in reach, and the time until the next strike can start: the family's whole rhythm
+  const cycle = (kind: MeleeKind) => {
+    fresh(kind);
+    const e = spawn(s, 'luuranko', h.x + 34, h.y, -1, false);
+    e.hp = 1e9;
+    step(s, inp({ attack: true }), DT);
+    let n = 1;
+    while ((h.windup || h.swing || h.lock > 0) && n < 600) {
+      step(s, inp({}), DT);
+      n++;
+    }
+    s.projectiles = [];
+    return n / 60;
+  };
+  const kinds: MeleeKind[] = ['dagger', 'sword', 'spear', 'axe', 'mace', 'anchor'];
+  const secs = kinds.map(cycle);
+  const ordered = secs.every((x, i) => i === 0 || x > secs[i - 1]);
+  check('each family has its own rhythm: dagger, sword, spear, axe, mace, anchor, each slower than the last', ordered && secs[5] > secs[0] * 3, kinds.map((k, i) => `${k} ${secs[i].toFixed(2)} s`).join(', '));
+  const costs = kinds.map((k) => (fresh(k), staminaCost(h, h.hands[0]!, 0)));
+  check('a tap costs stamina by the weight: dagger least, anchor most', costs.every((x, i) => i === 0 || x >= costs[i - 1]) && costs[5] > costs[0] * 4, costs.map((x) => x.toFixed(0)).join(' < '));
+  fresh('sword');
+  const tapCost = staminaCost(h, h.hands[0]!, 0);
+  const fullCost = staminaCost(h, h.hands[0]!, 1);
+  h.skills.lahi.lvl = 12;
+  const skilled = staminaCost(h, h.hands[0]!, 1);
+  check('a full charge costs more than a tap, and Lähitaistelu lowers the cost', fullCost > tapCost * 1.5 && skilled < fullCost * 0.75, `tap ${tapCost.toFixed(1)}, full ${fullCost.toFixed(1)}, full at skill 12 ${skilled.toFixed(1)}`);
+  // a tap on the sword really spends it
+  fresh('sword');
+  step(s, inp({ attack: true }), DT);
+  check('a strike spends the bar', h.stamina < STAMINA_MAX - tapCost + 1, `${h.stamina.toFixed(1)} left`);
+  // spam: the bar empties, the hero is winded, and the strikes slow down and weaken
+  fresh('sword');
+  const e = spawn(s, 'luuranko', h.x + 30, h.y, -1, false);
+  e.hp = 1e9;
+  const fast: number[] = [];
+  let firstDur = 0;
+  let windedDur = 0;
+  let windedAt = -1;
+  for (let i = 0; i < 900 && windedAt < 0; i++) {
+    const before = e.hp;
+    step(s, inp({ attack: true }), DT);
+    if (h.swing && !firstDur) firstDur = h.swing.dur;
+    if (e.hp < before) fast.push(before - e.hp);
+    if (h.winded) windedAt = i;
+  }
+  check('tapping without a pause empties the bar and winds the hero', windedAt > 0, `winded after ${(windedAt / 60).toFixed(1)} s, ${fast.length} hits`);
+  const weak: number[] = [];
+  for (let i = 0; i < 240 && h.winded; i++) {
+    const before = e.hp;
+    step(s, inp({ attack: true }), DT);
+    if (h.swing && h.winded) windedDur = Math.max(windedDur, h.swing.dur);
+    if (e.hp < before) weak.push(before - e.hp);
+  }
+  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
+  check('a winded strike is slower and weaker', windedDur > firstDur * 1.3 && weak.length > 0 && avg(weak) < avg(fast) * 0.8, `swing ${firstDur.toFixed(2)} -> ${windedDur.toFixed(2)} s, hit ${avg(fast).toFixed(1)} -> ${avg(weak).toFixed(1)}`);
+  // the refill: standing beats walking, and none while a strike runs
+  const refill = (input: Partial<HeroInput>) => {
+    fresh('sword');
+    h.stamina = 20;
+    for (let i = 0; i < 60; i++) step(s, inp(input), DT);
+    return h.stamina - 20;
+  };
+  const still = refill({});
+  const walk = refill({ mx: 0.3, my: 0.3 });
+  fresh('axe');
+  h.stamina = 50;
+  step(s, inp({ attack: true }), DT);
+  const after = h.stamina;
+  for (let i = 0; i < 20; i++) step(s, inp({}), DT);
+  check('the bar refills faster standing than walking, and not mid-strike', still > walk && walk > 10 && h.stamina <= after + 0.01, `standing +${still.toFixed(0)}/s, walking +${walk.toFixed(0)}/s, mid-strike ${after.toFixed(1)} -> ${h.stamina.toFixed(1)}`);
+  // a heavy swing at nothing: a longer recovery, and exposed
+  fresh('axe');
+  step(s, inp({ attack: true }), DT);
+  while (h.windup || h.swing) step(s, inp({}), DT);
+  const missOpen = h.open;
+  const exposed = h.exposed;
+  fresh('axe');
+  const target = spawn(s, 'luuranko', h.x + 30, h.y, -1, false);
+  target.hp = 1e9;
+  step(s, inp({ attack: true }), DT);
+  while (h.windup || h.swing) step(s, inp({}), DT);
+  const hitOpen = h.open;
+  check('a missed heavy swing recovers longer and leaves the hero exposed', exposed && !h.exposed && missOpen > hitOpen * 1.5, `miss ${missOpen.toFixed(2)} s exposed, hit ${hitOpen.toFixed(2)} s`);
+  // what a hit costs: plain, in a recovery, exposed
+  const hurt = (open: number, ex: boolean) => {
+    h.invuln = 0;
+    h.hp = 100;
+    h.open = open;
+    h.exposed = ex;
+    hurtHero(s, 20, 'test');
+    h.invuln = 1e9;
+    return 100 - h.hp;
+  };
+  const plain = hurt(0, false);
+  const inRec = hurt(0.5, false);
+  const inEx = hurt(0.5, true);
+  check('a hit in a recovery hurts more, most when exposed', plain < inRec && inRec < inEx, `${plain} / ${inRec} / ${inEx}`);
+  // the stairs give the bar back
+  h.stamina = 5;
+  h.winded = true;
+  nextFloor(s);
+  check('a new floor starts with a full bar', s.hero.stamina === STAMINA_MAX && !s.hero.winded);
 }
 
 // ————— the melee families: each plays by its own rule —————
@@ -350,16 +483,21 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
     h.draw = 0;
     h.drawing = false;
     h.swing = null;
+    h.windup = null;
+    h.open = 0;
+    h.stamina = STAMINA_MAX;
+    h.winded = false;
     h.dash = null;
     s.enemies = [];
   };
+  // a strike and its whole rhythm: the windup, the swing, the recovery
   const strike = (charge: number) => {
     if (charge <= 0) step(s, inp({ attack: true }), DT);
     else {
       while (h.draw < charge) step(s, inp({ hold: true }), DT);
       step(s, inp({ holdRelease: true }), DT);
     }
-    for (let i = 0; i < 60; i++) step(s, inp({}), DT);
+    for (let i = 0; i < 60 || ((h.windup || h.swing || h.lock > 0) && i < 300); i++) step(s, inp({}), DT);
   };
   // the axe: a wide cleave that bleeds
   reset();
@@ -480,7 +618,9 @@ check('every enemy attack shows a windup of at least a third of a second', ENEMI
   const hooked = dummy('hiisi', 96, 0, false);
   const d0 = Math.hypot(hooked.x - h.x, hooked.y - h.y);
   step(s, inp({ attack: true, aimX: 1, aimY: 0 }), DT);
-  check('the anchor flies', s.projectiles.some((p) => p.kind === 'anchor'));
+  let flew = 0;
+  for (let i = 0; i < 60 && !s.projectiles.some((p) => p.kind === 'anchor'); i++, flew++) step(s, inp({}), DT);
+  check('the anchor flies after its windup', s.projectiles.some((p) => p.kind === 'anchor') && flew > 10, `${flew} frames of windup`);
   for (let i = 0; i < 90; i++) step(s, inp({}), DT);
   const d1 = Math.hypot(hooked.x - h.x, hooked.y - h.y);
   check('the anchor drags a hooked enemy from three tiles to your feet', hooked.hp < 1e9 && d1 < 40 && d0 > 80, `${d0.toFixed(0)} px -> ${d1.toFixed(0)} px, hit for ${1e9 - hooked.hp}`);

@@ -47,6 +47,25 @@ Esc on tauko.
   Laukausten ja lyöntien väliin jää aina lyhyt tauko, joten naputtelu ei
   auta. Jousen ja miekan taito sekä jäntevä jousi tai nopea miekka
   lyhentävät aikaa täyteen lataukseen; katto ei nouse.
+- **Lähitaistelu vie puhtia.** Keltainen palkki elämän alla on puhti. Joka
+  lyönti kuluttaa sitä aseen painon mukaan: tikari vähän, kirves ja nuija
+  paljon, ankkuri eniten. Täysi lataus maksaa 1,8 kertaa napautuksen.
+  Valkoinen viiva palkissa näyttää täyden latauksen hinnan: kun palkki on
+  viivan yli, täysi lataus mahtuu. Palkki täyttyy, kun et lyö: seisten
+  nopeammin kuin kävellen. Kun puhti loppuu, olet uupunut: palkki
+  vilkkuu harmaana, ja lyönnit ovat hitaita ja heikkoja, kunnes palkki on
+  taas puolillaan. Lähitaistelun taito halventaa lyöntejä, 2,5 % tasolta,
+  enintään puoleen. Jousi ei kuluta puhtia. Kerroksen alussa palkki on
+  täynnä.
+- **Joka aseella on oma rytmi**: valmistelu ennen lyöntiä, lyönti ja
+  toipuminen sen jälkeen. Pito käyttää valmistelun latauksen aikana, joten
+  ladattu lyönti lähtee heti. Toipumisen aikana et voi lyödä, kävelet
+  hitaasti ja osuma sattuu enemmän (rengas jalkojen alla on oranssi).
+  Tikari on nopea ja halpa, miekka ja keihäs tasaisia, kirves, nuija ja
+  viikate raskaita, ankkuri hyvin raskas. Raskas lyönti, joka ei osu
+  mihinkään, jättää sinut auki: toipuminen kestää pitempään ja osuma
+  sattuu eniten (rengas on punainen, ja hahmon yllä lukee "ohi"). Aseen
+  kortti näyttää puhdin hinnan ja rytmin.
 - **Vihollisilla on aivot ja jokaisella oma oikku.** Kaikki pakenevat kun
   elämä on vähissä (juomapullon luo, jos sellainen on lattialla, ja juovat
   sen), nappaavat lattialta aseen ja lyövät sillä, huutavat lähellä olevat

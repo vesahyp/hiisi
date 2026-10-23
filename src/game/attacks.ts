@@ -48,8 +48,15 @@ export function bowRange(it: Item): number {
  * The hands' rhythm. A hold charges: the bow draws, the sword winds up, as
  * long as the thumb stays down, to a cap at 1. The release fires with the
  * charge; a tap fires at zero charge, the weak version. After a shot the
- * next draw waits NOCK of a draw time; after a swing the next waits
- * `swingLock`. Skills and gear shorten the time to full, never the cap.
+ * next draw waits NOCK of a draw time. Skills and gear shorten the time to
+ * full, never the cap.
+ *
+ * A melee strike has three phases, each the family's own (content/weapons.ts):
+ * the windup (a tap waits it out, a hold spends it while it charges), the
+ * swing, and the recovery, when the hero cannot attack, walks slowly and
+ * takes more from a hit. A heavy weapon that hits nothing recovers longer
+ * and is exposed. Every strike spends stamina by the weapon's weight and
+ * the charge; an empty bar makes strikes slow and weak until it refills.
  */
 export const DRAW_TIME = 1.0;
 export const NOCK = 0.6;
@@ -57,17 +64,77 @@ export function drawTime(h: Hero, it: Item): number {
   return DRAW_TIME * it.speed * heroStats(h).drawMul;
 }
 export function windTime(h: Hero, it: Item): number {
-  return familyOf(it).wind * it.speed * heroStats(h).windMul;
+  return familyOf(it).wind * it.speed * heroStats(h).windMul * tiredSlow(h);
 }
 /** the flail's full spin, radians a second */
 export const ORBIT_FULL = 7;
 export const SWING_TIME = 0.3;
-export function swingLock(h: Hero, it: Item): number {
-  return Math.max(0.2, familyOf(it).lock * it.speed * (1 - 0.02 * h.skills.lahi.lvl));
+/** the recovery after a strike: the family's, quicker with the skill, two percent a level */
+export function recoverTime(h: Hero, it: Item): number {
+  return familyOf(it).recover * it.speed * (1 - 0.02 * h.skills.lahi.lvl) * tiredSlow(h);
 }
+/** a missed heavy swing recovers this much longer, and a hit then hurts EXPOSED_HURT times */
+export const MISS_RECOVER = 1.8;
+export const OPEN_HURT = 1.15;
+export const EXPOSED_HURT = 1.5;
 /** What a charge is worth: a tap does three fifths, a full hold twice. */
 export function chargeMul(charge: number): number {
   return 0.6 + 1.4 * Math.min(1, Math.max(0, charge));
+}
+
+/** The stamina bar. */
+export const STAMINA_MAX = 100;
+/** a full charge costs this many times a tap */
+export const STAMINA_FULL = 1.8;
+/** refill a second: standing, walking, and while winded (always, even mid-swing) */
+export const REGEN_STILL = 40;
+export const REGEN_WALK = 28;
+export const REGEN_WINDED = 18;
+/** seconds after a strike's recovery before the bar starts to refill */
+export const REST = 0.3;
+/** winded strikes: this much slower in every phase, this much of the damage */
+export const WINDED_SLOW = 1.5;
+export const WINDED_DMG = 0.6;
+/** the bar must refill to this before the hero stops being winded */
+export const WINDED_UNTIL = 50;
+const tiredSlow = (h: Hero) => (h.winded ? WINDED_SLOW : 1);
+const tiredDmg = (h: Hero) => (h.winded ? WINDED_DMG : 1);
+
+/** What a strike costs: the weapon's weight, more with the charge, less with the skill (2.5 % a level, to half). */
+export function staminaCost(h: Hero, it: Item, charge: number): number {
+  return familyOf(it).cost * (1 + (STAMINA_FULL - 1) * Math.min(1, Math.max(0, charge))) * Math.max(0.5, 1 - 0.025 * h.skills.lahi.lvl);
+}
+
+/** Spend stamina on a strike. A winded hero pays nothing: the strike is already slow and weak. */
+export function spendStamina(s: SimState, h: Hero, cost: number): void {
+  h.rest = REST;
+  if (h.winded) return;
+  h.stamina -= cost;
+  if (h.stamina > 0) return;
+  h.stamina = 0;
+  h.winded = true;
+  s.texts.push({ x: h.x, y: h.y - 34, text: tr('uupunut', 'winded'), color: '#c8b070', life: 1.2, size: 12 });
+  s.sounds.push('drawstep');
+}
+
+/** The bar refills when the hands rest: faster standing than walking, never mid-strike unless winded. */
+export function regenStamina(h: Hero, dt: number): void {
+  const it = held(h);
+  const busy = !!h.windup || !!h.swing || !!h.dash || h.open > 0 || (h.drawing && !!it && isMelee(it.kind));
+  if (busy || h.lock > 0) h.rest = Math.max(h.rest, REST);
+  else h.rest = Math.max(0, h.rest - dt);
+  let rate = 0;
+  if (h.winded) rate = REGEN_WINDED;
+  else if (h.rest <= 0) rate = h.moving ? REGEN_WALK : REGEN_STILL;
+  h.stamina = Math.min(STAMINA_MAX, h.stamina + rate * dt);
+  if (h.winded && h.stamina >= WINDED_UNTIL) h.winded = false;
+}
+
+/** The recovery after a strike: no attack, a slow walk, open to hits. */
+function recover(h: Hero, secs: number, exposed: boolean): void {
+  h.open = secs;
+  h.lock = Math.max(h.lock, secs);
+  h.exposed = exposed;
 }
 
 /**
@@ -78,7 +145,7 @@ export function chargeMul(charge: number): number {
  * angle to its centre from a pixel away is noise.
  */
 export const AIM_DRAG = 0.35;
-function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
+function aimAngle(s: SimState, h: Hero, inp: Pick<HeroInput, 'aimX' | 'aimY'>, range: number): number {
   if (Math.hypot(inp.aimX, inp.aimY) > AIM_DRAG) return Math.atan2(inp.aimY, inp.aimX);
   const e = nearestVisible(s, h, range);
   if (e) {
@@ -96,41 +163,78 @@ function aimAngle(s: SimState, h: Hero, inp: HeroInput, range: number): number {
 
 /** How far a melee auto-aim looks for a target: four tiles, so a tap while kiting still turns to the enemy. */
 export const MELEE_AIM = 4 * T;
+const meleeAimRange = (h: Hero, it: Item) => Math.max(MELEE_AIM, swordReach(h, it) * 1.6);
 
 export function startSwing(s: SimState, h: Hero, it: Item, angle: number, o: Partial<Swing> = {}): void {
   const f = familyOf(it);
-  const dur = SWING_TIME * f.swing * it.speed;
+  const dur = SWING_TIME * f.swing * it.speed * tiredSlow(h);
   const effect = f.effect === 'pull' || f.effect === 'none' ? 'none' : f.effect;
-  h.swing = { t: 0, dur, angle, reach: swordReach(h, it), width: f.width, dmgMul: 1, hit: new Set(), passes: 1, lunge: f.lunge, shape: f.shape === 'line' ? 'line' : f.shape === 'ring' ? 'ring' : 'arc', effect, slam: false, ...o };
+  h.swing = { t: 0, dur, angle, reach: swordReach(h, it), width: f.width, dmgMul: 1, hit: new Set(), passes: 1, lunge: f.lunge, shape: f.shape === 'line' ? 'line' : f.shape === 'ring' ? 'ring' : 'arc', effect, slam: false, recover: recoverTime(h, it), heavy: f.heavy, ...o };
+  h.swing.dmgMul *= tiredDmg(h);
   h.facing = angle;
-  h.lock = swingLock(h, it);
+  h.lock = 0;
+  h.open = 0;
   h.parry = -1;
   h.draw = 0;
   h.drawing = false;
   s.sounds.push(f.sound);
 }
 
-/** The release of a wound-up melee weapon, with its family's behaviour. */
-export function release(s: SimState, h: Hero, it: Item, angle: number, charge: number): void {
+/**
+ * The release of a melee weapon: it pays the stamina, then waits out what
+ * is left of the family's windup (a full hold has spent it all) before the
+ * strike starts.
+ */
+export function release(s: SimState, h: Hero, it: Item, angle: number, charge: number, aimed: boolean): void {
+  const f = familyOf(it);
+  const spin = f.shape === 'orbit' ? Math.min(1, h.orbit.spin / ORBIT_FULL) : charge;
+  spendStamina(s, h, staminaCost(h, it, spin));
+  const wait = f.windup * it.speed * tiredSlow(h) * (1 - Math.min(1, charge));
+  h.facing = angle;
+  h.draw = 0;
+  h.drawing = false;
+  h.parry = -1;
+  if (wait > 0.01) {
+    h.windup = { t: wait, dur: wait, angle, charge, aimed };
+    return;
+  }
+  strike(s, h, it, angle, charge);
+}
+
+/** The windup runs out: the strike starts, turned to the enemy if the release had no drag. */
+export function updateWindup(s: SimState, h: Hero, dt: number): void {
+  const w = h.windup;
+  if (!w) return;
+  w.t -= dt;
+  if (w.t > 0) return;
+  h.windup = null;
+  const it = held(h);
+  if (!it || !isMelee(it.kind)) return;
+  const angle = w.aimed ? w.angle : nearestVisible(s, h, meleeAimRange(h, it)) ? aimAngle(s, h, { aimX: 0, aimY: 0 }, meleeAimRange(h, it)) : w.angle;
+  strike(s, h, it, angle, w.charge);
+}
+
+/** The strike itself, with its family's behaviour. */
+function strike(s: SimState, h: Hero, it: Item, angle: number, charge: number): void {
   const f = familyOf(it);
   const mul = chargeMul(charge);
   if (f.shape === 'orbit') {
     // the flail: the ball flies straight ahead with the spin behind it
     const spin = Math.min(1, h.orbit.spin / ORBIT_FULL);
     const sp = 300 + 220 * spin;
-    s.projectiles.push({ id: s.nextId++, x: h.x + Math.cos(angle) * 14, y: h.y + Math.sin(angle) * 14, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, r: 9, team: 0, dmg: rollDamage(s, h, it, chargeMul(spin)), left: swordReach(h, it) * 3.2, pierce: 0, hit: new Set(), kind: 'ball', skill: 'lahi', homing: 0, dead: false });
+    s.projectiles.push({ id: s.nextId++, x: h.x + Math.cos(angle) * 14, y: h.y + Math.sin(angle) * 14, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, r: 9, team: 0, dmg: rollDamage(s, h, it, chargeMul(spin) * tiredDmg(h)), left: swordReach(h, it) * 3.2, pierce: 0, hit: new Set(), kind: 'ball', skill: 'lahi', homing: 0, dead: false });
     h.orbit.spin = 0;
-    h.lock = swingLock(h, it);
+    recover(h, recoverTime(h, it), false);
     h.facing = angle;
     s.sounds.push('whirl');
     noise(s, h.x, h.y, 5);
     return;
   }
   if (f.shape === 'throw') {
-    // the anchor: a hook down a line, back with whatever it caught
+    // the anchor: a hook down a line, back with whatever it caught; a throw that hooks nothing leaves the hero exposed
     const sp = 520;
-    s.projectiles.push({ id: s.nextId++, x: h.x + Math.cos(angle) * 14, y: h.y + Math.sin(angle) * 14, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, r: f.width, team: 0, dmg: rollDamage(s, h, it, mul), left: swordReach(h, it) * (0.6 + 0.4 * charge), pierce: 99, hit: new Set(), kind: 'anchor', skill: 'lahi', homing: 0, dead: false, hooked: [], returning: false });
-    h.lock = swingLock(h, it);
+    s.projectiles.push({ id: s.nextId++, x: h.x + Math.cos(angle) * 14, y: h.y + Math.sin(angle) * 14, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, r: f.width, team: 0, dmg: rollDamage(s, h, it, mul * tiredDmg(h)), left: swordReach(h, it) * (0.6 + 0.4 * charge), pierce: 99, hit: new Set(), kind: 'anchor', skill: 'lahi', homing: 0, dead: false, hooked: [], returning: false });
+    recover(h, recoverTime(h, it), false);
     h.facing = angle;
     s.sounds.push('chain');
     noise(s, h.x, h.y, 6);
@@ -152,6 +256,12 @@ export function release(s: SimState, h: Hero, it: Item, angle: number, charge: n
     return;
   }
   startSwing(s, h, it, angle, { dmgMul: mul });
+}
+
+/** A heavy strike that found nobody: a longer recovery, and a hit then hurts most. */
+function missed(s: SimState, h: Hero, secs: number): void {
+  recover(h, secs * MISS_RECOVER, true);
+  s.texts.push({ x: h.x, y: h.y - 30, text: tr('ohi', 'miss'), color: '#c8c8c8', life: 0.8, size: 12 });
 }
 
 /** The swing's hit lands partway through; a whirl lands twice. */
@@ -228,7 +338,11 @@ export function updateSwing(s: SimState, h: Hero, dt: number): void {
       void hpBefore;
     }
   }
-  if (sw.t >= sw.dur) h.swing = null;
+  if (sw.t >= sw.dur) {
+    h.swing = null;
+    if (sw.heavy && sw.hit.size === 0) missed(s, h, sw.recover);
+    else recover(h, sw.recover, false);
+  }
 }
 
 export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: number): void {
@@ -271,6 +385,9 @@ export function shoot(s: SimState, h: Hero, it: Item, angle: number, draw: numbe
 export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): void {
   const it = held(h);
   h.lock = Math.max(0, h.lock - dt);
+  h.open = Math.max(0, h.open - dt);
+  if (h.open <= 0) h.exposed = false;
+  regenStamina(h, dt);
   h.parried = Math.max(0, h.parried - dt);
   h.swapCd = Math.max(0, h.swapCd - dt);
   for (const k of Object.keys(h.cooldowns)) h.cooldowns[k] = Math.max(0, h.cooldowns[k] - dt);
@@ -279,6 +396,7 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     h.active = 1 - h.active;
     h.swapCd = 0.25;
     h.swing = null;
+    h.windup = null;
     h.draw = 0;
     h.drawing = false;
     h.parry = -1;
@@ -287,11 +405,13 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
   if (!it) return;
   const sword = isMelee(it.kind);
   const fam = isMelee(it.kind) ? FAMILY[it.kind] : null;
+  if (h.windup && !sword) h.windup = null;
+  updateWindup(s, h, dt);
 
   // the hold verb charges: the bow draws, the sword winds up (and, with
   // Torjunta, guards from the front while it does); the release fires with
   // the charge, a tap fires the weak version at once
-  const canStart = h.lock <= 0 && !h.swing && !h.dash;
+  const canStart = h.lock <= 0 && !h.swing && !h.dash && !h.windup;
   if (inp.hold && (canStart || h.drawing)) {
     if (!h.drawing) {
       h.drawing = true;
@@ -319,6 +439,11 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
   // the flail's ball orbits while the hold lasts; walking feeds the spin
   if (fam?.shape === 'orbit') {
     if (h.drawing) {
+      // the spin costs stamina while it lasts; winded, it feeds at the winded pace
+      if (!h.winded) {
+        h.stamina = Math.max(0, h.stamina - fam.cost * 0.6 * dt);
+        if (h.stamina <= 0) spendStamina(s, h, 1);
+      }
       const feed = (h.moving ? 1.6 : 1.0) * ORBIT_FULL * dt / windTime(h, it);
       h.orbit.spin = Math.min(ORBIT_FULL * 1.3, h.orbit.spin + feed);
       h.orbit.a += h.orbit.spin * dt;
@@ -340,7 +465,7 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     }
   }
   const fire = (charge: number) => {
-    if (sword) release(s, h, it, aimAngle(s, h, inp, Math.max(MELEE_AIM, swordReach(h, it) * 1.6)), charge);
+    if (sword) release(s, h, it, aimAngle(s, h, inp, meleeAimRange(h, it)), charge, Math.hypot(inp.aimX, inp.aimY) > AIM_DRAG);
     else shoot(s, h, it, aimAngle(s, h, inp, bowRange(it)), charge);
   };
   if (inp.holdRelease && h.drawing) {
@@ -348,7 +473,7 @@ export function heroAttack(s: SimState, h: Hero, inp: HeroInput, dt: number): vo
     h.drawing = false;
     h.draw = 0;
     h.parry = -1;
-    if (h.lock <= 0 && !h.swing && !h.dash) fire(charge);
+    if (h.lock <= 0 && !h.swing && !h.dash && !h.windup) fire(charge);
   } else if (inp.attack && canStart) fire(0);
   h.aimShow = { on: inp.aiming, x: inp.aiming ? inp.aimX : h.aimShow.x, y: inp.aiming ? inp.aimY : h.aimShow.y };
 
@@ -371,14 +496,15 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
     return;
   }
   if (!it) return;
-  if (h.swing || h.lock > 0 || h.dash) return;
+  if (h.swing || h.lock > 0 || h.dash || h.windup) return;
+  // a technique pays stamina like a strike: Halkaisu one and a half, Pyörre twice, Syöksy once
+  const techCost = isMelee(it.kind) ? staminaCost(h, it, 0) * (id === 'halkaisu' ? 1.5 : id === 'pyorre' ? 2 : id === 'syoksy' ? 1 : 0) : 0;
   switch (id) {
     case 'halkaisu': {
       // the weapon's heavy blow: half again as wide and as strong
       const angle = aimAngle(s, h, inp, Math.max(MELEE_AIM, swordReach(h, it) * 1.8));
       const f = familyOf(it);
-      startSwing(s, h, it, angle, { width: f.shape === 'line' ? f.width * 2 : Math.min(Math.PI, f.width * 1.5), dmgMul: 1.5, reach: swordReach(h, it) * 1.15, dur: SWING_TIME * f.swing * 1.3 * it.speed });
-      h.lock = swingLock(h, it) * 1.2;
+      startSwing(s, h, it, angle, { width: f.shape === 'line' ? f.width * 2 : Math.min(Math.PI, f.width * 1.5), dmgMul: 1.5, reach: swordReach(h, it) * 1.15, dur: SWING_TIME * f.swing * 1.3 * it.speed * tiredSlow(h), recover: recoverTime(h, it) * 1.2 });
       break;
     }
     case 'syoksy': {
@@ -397,8 +523,7 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
       break;
     }
     case 'pyorre': {
-      startSwing(s, h, it, h.facing, { shape: 'ring', width: Math.PI, passes: 2, dur: 0.6 * it.speed, lunge: 0 });
-      h.lock = 0.7 * it.speed;
+      startSwing(s, h, it, h.facing, { shape: 'ring', width: Math.PI, passes: 2, dur: 0.6 * it.speed * tiredSlow(h), lunge: 0, recover: 0.4 * it.speed * tiredSlow(h) });
       break;
     }
     case 'ansa': {
@@ -423,6 +548,7 @@ function technique(s: SimState, h: Hero, id: string, inp: HeroInput): void {
     default:
       return;
   }
+  if (techCost > 0) spendStamina(s, h, techCost);
   h.cooldowns[id] = d.cooldown;
 }
 
@@ -506,6 +632,7 @@ export function updateProjectiles(s: SimState, dt: number): void {
         }
         if (dh < 30) {
           p.dead = true;
+          if (p.hit.size === 0) missed(s, h, Math.max(h.open, 0.35));
           for (const id of p.hooked ?? []) {
             const e = s.enemies.find((x) => x.id === id && !x.dead);
             if (e) {

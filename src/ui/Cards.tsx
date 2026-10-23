@@ -5,8 +5,16 @@ import { nameOf } from '../game/sim';
 import { skillOf } from '../game/hero';
 import { t, tr } from '../i18n';
 import { SKILLS } from '../game/skills';
+import { familyOf, staminaCost, SWING_TIME } from '../game/attacks';
 
 const skillName = (id: string) => t(SKILLS.find((s) => s.id === id)!.name);
+
+/** The family's rhythm in a word: the windup, the swing and the recovery together. */
+function rhythmWord(it: Item): string {
+  const f = familyOf(it);
+  const secs = f.windup + SWING_TIME * f.swing + f.recover;
+  return secs < 0.5 ? tr('nopea', 'fast') : secs < 1.0 ? tr('tasainen', 'even') : secs < 1.6 ? tr('raskas', 'heavy') : tr('hyvin raskas', 'very heavy');
+}
 
 /** An item's card: name, kind and numbers, beside what it would replace. */
 export function ItemCard({ it, vs, h, compact = false }: { it: Item; vs?: Item | null; h: Hero; compact?: boolean }) {
@@ -38,6 +46,20 @@ export function ItemCard({ it, vs, h, compact = false }: { it: Item; vs?: Item |
             <span>{sk ? skillName(sk) : ''}</span>
             <b>{lvl}</b>
           </div>
+          {isMelee(it.kind) && (
+            <div className="stat">
+              <span>{tr('Puhti', 'Stamina')}</span>
+              <b>
+                {Math.round(staminaCost(h, it, 0))} / {Math.round(staminaCost(h, it, 1))}
+              </b>
+            </div>
+          )}
+          {isMelee(it.kind) && (
+            <div className="stat">
+              <span>{tr('Rytmi', 'Rhythm')}</span>
+              <b>{rhythmWord(it)}</b>
+            </div>
+          )}
           {it.speed !== 1 && (
             <div className="stat up">
               <span>{tr('Nopeus', 'Speed')}</span>

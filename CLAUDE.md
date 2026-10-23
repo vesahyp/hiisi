@@ -139,28 +139,39 @@ public/mockups/         the design mockups and their shooter
    bow draws, the sword winds up (and guards with Torjunta), for as long as
    the thumb stays down, to a cap at 1; the release fires with the charge
    (`chargeMul`: ×0.6 at a tap, ×2 at full), and the next draw or swing
-   waits `NOCK` or `swingLock`. Skills and gear shorten the time to full
+   waits `NOCK` or the swing's recovery (rule 9). Skills and gear shorten the time to full
    (`drawMul`, `windMul`), never the cap. `sim-check` asserts the spam
    rate, the held draw, the damage curve and the cap.
-9. **Every enemy attack is slow enough to see.** A windup shows before a
+9. **A melee strike has a rhythm and a price.** Each family has a windup
+   (a tap waits it out, a hold spends it), a swing and a recovery
+   (`content/weapons.ts`: `windup`, `swing`, `recover`). In the recovery
+   the hero cannot attack, walks slowly and takes more from a hit
+   (`OPEN_HURT`); a heavy weapon that hits nothing is exposed
+   (`MISS_RECOVER`, `EXPOSED_HURT`). Every strike spends stamina
+   (`staminaCost`: the family's `cost`, ×1.8 at full charge, less with
+   Lähitaistelu); an empty bar winds the hero, slow and weak strikes until
+   it is half full. A tap with no drag turns to the nearest enemy when the
+   windup ends. `sim-check` asserts the order of the rhythms, the costs,
+   the refill, the winded strike and the exposed miss.
+10. **Every enemy attack is slow enough to see.** A windup shows before a
    strike, the bear's charge draws its lane, enemy arrows fly slowly. The
    proof is `npm run gauntlet`: the human-limited bot must reach floor 3
    with either hand in most runs.
-10. **Skills rise only from hits on enemies that still give experience, and
+11. **Skills rise only from hits on enemies that still give experience, and
    never past the floor's cap** (`skillCap`). That is the rule that makes
    grinding impossible; do not add a way round it.
-11. **The save is the top of a floor.** `nextFloor` snapshots before the
+12. **The save is the top of a floor.** `nextFloor` snapshots before the
    floor spawns (`save.ts`); death clears it. Nothing mid-floor is saved.
-12. **Two languages, English in the code.** Every player-facing string is
+13. **Two languages, English in the code.** Every player-facing string is
    `L(fi, en)` or `tr(fi, en)`.
-13. **A body never catches on a corner.** `moveCircle` slides along walls
+14. **A body never catches on a corner.** `moveCircle` slides along walls
     and nudges round door frames and wall ends; `sim-check` pushes a body
     diagonally into corners and doorways and fails if it stops. Corridors
     are one to three tiles wide; areas are open enough to kite in.
-14. **Nothing in the HUD covers the hero's part of the screen.** Every
+15. **Nothing in the HUD covers the hero's part of the screen.** Every
     element lives in a column at an edge (`docs/loot-ui.md`); `loot-check`
     asserts it in portrait and in a short landscape viewport.
-15. **Prose style:** no em dashes, no "this, not that", no metaphors.
+16. **Prose style:** no em dashes, no "this, not that", no metaphors.
     Commit messages in English.
 
 ## Workflow

@@ -25,7 +25,7 @@ interface Blob {
 }
 
 export function snapshot(s: SimState): string {
-  const h: Hero = { ...s.hero, swing: null, dash: null, near: null, cooldowns: {} };
+  const h: Hero = { ...s.hero, swing: null, windup: null, open: 0, exposed: false, dash: null, near: null, cooldowns: {} };
   const maxItem = Math.max(0, ...[...h.hands, h.coat, ...h.pack].map((x) => x?.id ?? 0));
   const b: Blob = { v: SAVE_VERSION, seed: s.seed, floor: s.floor, time: s.time, rng: s.rng.state, nextId: s.nextId, itemId: maxItem + 1, hero: h, potionColors: s.potionColors, run: s.run, log: s.log.slice(-6) };
   return JSON.stringify(b);
@@ -45,7 +45,7 @@ export function restore(blob: string): SimState | null {
   s.time = b.time;
   s.rng.state = b.rng;
   s.nextId = b.nextId;
-  s.hero = { ...createState(0, s.dungeon).hero, ...b.hero, swing: null, dash: null, near: null, cooldowns: {} };
+  s.hero = { ...createState(0, s.dungeon).hero, ...b.hero, swing: null, windup: null, open: 0, exposed: false, dash: null, near: null, cooldowns: {} };
   s.potionColors = b.potionColors;
   s.run = b.run;
   s.log = b.log ?? [];

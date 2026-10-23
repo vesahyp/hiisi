@@ -1,7 +1,7 @@
 import { createState, LAST_FLOOR, type Hero, type HeroInput, type SimState, type Enemy } from './state';
 import { freeSpot, generateDungeon, moveCircle, openDoorsNear, roomSpots, STAIRS_DOWN, T, tileAt, updateFlow, updateSeen, idxAt, VISIBLE, UNSEEN } from './dungeon';
 import { ENEMY_BY_ID, floorCast } from './content/enemies';
-import { AIM_DRAG, heroAttack, updateDash, updateProjectiles, updateSwing } from './attacks';
+import { AIM_DRAG, STAMINA_MAX, heroAttack, updateDash, updateProjectiles, updateSwing } from './attacks';
 import { enemyStep, separate, springTraps } from './ai';
 import { dropItem } from './combat';
 import { has, held, heroStats } from './hero';
@@ -41,6 +41,11 @@ export function startFloor(s: SimState): void {
   h.x = d.startX;
   h.y = d.startY;
   h.swing = null;
+  h.windup = null;
+  h.open = 0;
+  h.exposed = false;
+  h.stamina = STAMINA_MAX;
+  h.winded = false;
   h.dash = null;
   h.draw = 0;
   h.drawing = false;
@@ -211,15 +216,17 @@ export function step(s: SimState, inp: HeroInput, dt: number): void {
     const k = Math.min(1, m);
     let sp = st.speed * k;
     if (h.swing) sp *= 0.3;
+    else if (h.windup) sp *= 0.5;
+    else if (h.open > 0) sp *= h.exposed ? 0.45 : 0.8;
     moveCircle(d, h, h.r, inp.mx * sp * dt, inp.my * sp * dt);
     h.walk += dt * k * 10;
-    if (!h.swing && h.parry < 0 && !h.drawing && !inp.aiming) h.facing = Math.atan2(inp.my, inp.mx);
+    if (!h.swing && !h.windup && h.open <= 0 && h.parry < 0 && !h.drawing && !inp.aiming) h.facing = Math.atan2(inp.my, inp.mx);
   }
   if (h.swing && h.swing.lunge > 0 && h.swing.t < h.swing.dur * 0.45) {
     const k = (h.swing.lunge / (h.swing.dur * 0.45)) * dt;
     moveCircle(d, h, h.r, Math.cos(h.swing.angle) * k, Math.sin(h.swing.angle) * k);
   }
-  if (inp.aiming && Math.hypot(inp.aimX, inp.aimY) > AIM_DRAG && !h.swing) h.facing = Math.atan2(inp.aimY, inp.aimX);
+  if (inp.aiming && Math.hypot(inp.aimX, inp.aimY) > AIM_DRAG && !h.swing && !h.windup) h.facing = Math.atan2(inp.aimY, inp.aimX);
   // a door opens to a hand on it: the reach covers a body pressed against the frame beside it
   if (openDoorsNear(d, h.x, h.y, h.r + 16) > 0) {
     s.sounds.push('door');

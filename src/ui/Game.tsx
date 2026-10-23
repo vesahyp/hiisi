@@ -14,6 +14,7 @@ import { dropItem, hurtEnemy, wake as wakeEnemy } from '../game/combat';
 import { NO_INPUT, type Enemy } from '../game/state';
 import { NODE_BY_ID } from '../game/content/tree';
 import { held, heroStats, fighterOf } from '../game/hero';
+import { STAMINA_MAX, staminaCost } from '../game/attacks';
 import { xpToNext, buildName } from '../game/skills';
 import { ItemCard } from './Cards';
 import { Sheets, type Tab } from './Sheets';
@@ -49,6 +50,10 @@ interface Hud {
   toast: { text: string; color: string } | null;
   boss: { name: string; hp: number; max: number } | null;
   buffs: string[];
+  /** stamina 0..1, and where a full charge of the melee hand would leave it (null with the bow) */
+  stamina: number;
+  fullCost: number | null;
+  winded: boolean;
 }
 
 type Overlay = { kind: 'none' } | { kind: 'pause' } | { kind: 'sheet'; tab: Tab } | { kind: 'guide' } | { kind: 'loot'; id: number };
@@ -193,6 +198,9 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
         banner: s.banner ? { text: s.banner.text, sub: s.banner.sub, color: s.banner.color } : null,
         toast: s.toast ? { text: s.toast.text, color: s.toast.color } : null,
         boss: boss ? { name: t(boss.def.name), hp: boss.hp, max: boss.maxHp } : null,
+        stamina: h.stamina / STAMINA_MAX,
+        fullCost: it && isMelee(it.kind) ? staminaCost(h, it, 1) / STAMINA_MAX : null,
+        winded: h.winded,
         buffs: [h.buffs.strength > 0 ? tr('voima', 'strength') : '', h.buffs.speed > 0 ? tr('nopeus', 'speed') : '', h.buffs.poison > 0 ? tr('myrkky', 'poison') : ''].filter(Boolean),
       });
     };
@@ -316,6 +324,11 @@ export function Game({ sim, onEnd, onQuit }: { sim: SimState; onEnd: (r: RunSumm
             <span>
               {hud.hp} / {hud.maxHp}
             </span>
+          </div>
+          {/* stamina: gold while a full charge is in it (past the notch), orange below, grey and blinking when winded */}
+          <div className={`bar stam ${hud.winded ? 'winded' : hud.fullCost !== null && hud.stamina < hud.fullCost ? 'low' : ''} ${hud.fullCost === null ? 'idle' : ''}`}>
+            <i style={{ width: `${Math.round(hud.stamina * 100)}%` }} />
+            {hud.fullCost !== null && !hud.winded && <b style={{ left: `${Math.round(hud.fullCost * 100)}%` }} />}
           </div>
           {/* the two hands as pills: icon, damage, the skill; a tap swaps */}
           <div className="hands" data-ui>

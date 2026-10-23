@@ -6,6 +6,7 @@ import { t, tr } from '../i18n';
 import { say } from './log';
 import { LAST_FLOOR } from './state';
 import { freeSpot, T } from './dungeon';
+import { EXPOSED_HURT, OPEN_HURT } from './attacks';
 
 /**
  * Every hit goes through one of two functions, Höyry's rule: hurtEnemy and
@@ -106,6 +107,8 @@ export function hurtHero(s: SimState, dmg: number, what: string, angle = 0): voi
   const h = s.hero;
   if (!h.alive || h.invuln > 0) return;
   const st = heroStats(h);
+  // caught in a strike's recovery: a hit hurts more, most after a missed heavy swing
+  if (h.open > 0) dmg *= h.exposed ? EXPOSED_HURT : OPEN_HURT;
   const taken = Math.max(1, Math.round(dmg - st.armor));
   h.hp -= taken;
   h.hurtFlash = 0.25;

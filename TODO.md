@@ -8,6 +8,10 @@ The design is in `docs/plan.md`.
 - Playtest by hand on a phone. The bot clears the slice; a person has to
   say whether the sword and the bow feel different enough, and whether a
   windup reads in time on a small screen.
+- Stamina and the melee rhythms: play each family by hand and tune the
+  numbers in `content/weapons.ts` (`windup`, `recover`, `cost`) and the
+  refill rates in `attacks.ts`. Decide whether the bow's draw should
+  spend stamina too.
 - A drawn guide, as in Höyry: every control with its own element.
 - The bear: the bot wins against it almost every time. Decide by hand
   whether the charge needs a second pattern.

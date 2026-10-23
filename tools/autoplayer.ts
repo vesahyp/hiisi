@@ -1,7 +1,7 @@
 import { clearShot, distanceField, flowDir, lineOfSight, openDir, T, UNSEEN, VISIBLE, seenAt } from '../src/game/dungeon';
 import { NO_INPUT, type Enemy, type Hero, type HeroInput, type SimState } from '../src/game/state';
 import { DT } from '../src/game/sim';
-import { nearestVisible, swordReach, bowRange } from '../src/game/attacks';
+import { nearestVisible, swordReach, bowRange, staminaCost } from '../src/game/attacks';
 import { canLearn, has, held, learn } from '../src/game/hero';
 import { isMelee, weaponScore } from '../src/game/items';
 import { NODES, NODE_BY_ID, type RowId } from '../src/game/content/tree';
@@ -209,9 +209,9 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
       // is met with the same hold (the guard) or a sidestep
       const fam = isMelee(it.kind) ? FAMILY[it.kind] : null;
       if (fam?.shape === 'orbit') {
-        // the flail: hold and walk into them; hurl it when they are at the chain's end
+        // the flail: hold and walk into them; hurl it when they are at the chain's end, or inside the orbit where the ball cannot reach
         if (sees && td < reach * 3) {
-          if (h.drawing && td > reach * 1.3 && h.orbit.spin > 4) inp.holdRelease = true;
+          if (h.drawing && (td > reach * 1.3 || td < reach * 0.6) && h.orbit.spin > 4) inp.holdRelease = true;
           else if (h.lock <= 0) inp.hold = true;
         }
       } else if (sees && td < reach * 2.2) {
@@ -220,9 +220,16 @@ export function botInput(s: SimState, h: Hero, rng: Rng, who: Player = BOT): Her
           mx += -dy * 2;
           my += dx * 2;
         }
+        // short of breath: back off and let the bar refill, as a person would;
+        // a strike in recovery steps away too
+        const tired = h.winded || h.stamina < staminaCost(h, it, 1);
+        if ((tired && !h.drawing) || h.open > 0) {
+          mx = -dx;
+          my = -dy;
+        }
         const inReach = td < reach + tgt.r + 6;
-        if (h.drawing && inReach && (h.draw >= 1 || !threat)) inp.holdRelease = true;
-        else if (h.lock <= 0 && !h.swing) inp.hold = true;
+        if (h.drawing && inReach && (h.draw >= 1 || !threat || tired)) inp.holdRelease = true;
+        else if (h.lock <= 0 && !h.swing && !h.windup && (!tired || td < reach * 0.8)) inp.hold = true;
       }
     }
     if (tgt.mode !== 'windup') mem.seen.delete(-tgt.id);
