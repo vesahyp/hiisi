@@ -8,7 +8,8 @@
 #   make sim-check     # the floors, the hands, levelling, the save, a replay, the bot, headless
 #   make balance       # the bot plays whole runs, one line each (RUNS ?= 6 STYLE ?= best WHO ?= bot)
 #   make gauntlet      # the human-limited bot must reach floor TO (3) in most of RUNS (8) runs, with either hand
-#   make shots-setup   # once: install Chromium for Playwright
+#   make setup         # after a fresh clone: packages and the Playwright Chromium
+#   make shots-setup   # install Chromium for Playwright
 #   make shots         # phone screenshots into shots/ (make shots-en for English)
 #   make phone-run     # the human-limited bot plays on an emulated iPhone by real frames, on video (shots/phone/)
 #   make loot-check    # loot never covers the play area: the chip, the walk, the card, in portrait and a short landscape (shots/loot/)
@@ -21,7 +22,21 @@
 #   make floor-shots   # three floors of three seeds, the whole floor revealed on the map sheet, into shots/floors/
 #   make mockups       # re-render the design mockups into public/mockups/shots/
 
-.PHONY: dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check screen-check charge-check sheets-check icons floor-shots arsenal-shots mob-shots mockups
+.PHONY: setup dev build preview check sim-check balance gauntlet shots-setup shots shots-en phone-run loot-check screen-check charge-check sheets-check icons floor-shots arsenal-shots mob-shots mockups
+
+# What a fresh clone needs before the other targets work. Safe to rerun:
+# npm ci runs only when node_modules is missing, and playwright install
+# only downloads a browser it does not find. Every target that drives a
+# browser runs shots-setup first when node_modules/playwright is missing.
+setup: ## after a fresh clone: npm packages and the Playwright Chromium
+	@for t in node npm; do \
+	  command -v $$t >/dev/null || { echo "missing $$t: brew bundle --file ~/Repositories/personal-backup/Brewfile"; exit 1; }; \
+	done
+	@test -d node_modules || npm ci --no-fund --no-audit
+	npx playwright install chromium
+
+node_modules/playwright:
+	$(MAKE) shots-setup
 
 dev:
 	npm run dev
@@ -59,38 +74,38 @@ gauntlet:
 shots-setup:
 	npm install && npx playwright install chromium
 
-shots:
+shots: | node_modules/playwright
 	node scripts/shots.mjs
 
-shots-en:
+shots-en: | node_modules/playwright
 	node scripts/shots.mjs en
 
-loot-check:
+loot-check: | node_modules/playwright
 	node scripts/loot-check.mjs
 
 SEED ?= 2026
-phone-run:
+phone-run: | node_modules/playwright
 	node scripts/phone-run.mjs $(SEED)
 
-icons:
+icons: | node_modules/playwright
 	node scripts/icons.mjs
 
-screen-check:
+screen-check: | node_modules/playwright
 	node scripts/screen-check.mjs
 
-charge-check:
+charge-check: | node_modules/playwright
 	node scripts/charge-check.mjs
 
-sheets-check:
+sheets-check: | node_modules/playwright
 	node scripts/sheets-check.mjs
 
-floor-shots:
+floor-shots: | node_modules/playwright
 	node scripts/floor-shots.mjs
 
-arsenal-shots:
+arsenal-shots: | node_modules/playwright
 	node scripts/arsenal-shots.mjs
 
-mob-shots:
+mob-shots: | node_modules/playwright
 	node scripts/mob-shots.mjs
 
 mockups:
